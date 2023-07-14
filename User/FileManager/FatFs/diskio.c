@@ -17,7 +17,7 @@
 #define DEV_MMC		1	/* Example: Map MMC/SD card to physical drive 1 */
 #define DEV_USB		2	/* Example: Map USB MSD to physical drive 2 */
 
-#define SECTOR_SIZE                                              512U
+#define SECTOR_SIZE 512 //521U
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -56,20 +56,20 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
+    SD_Error result;
+
     if(count==1)
     {
-        SD_ReadBlock(&buff[0], sector << 9, SECTOR_SIZE);
-        while(SD_GetState() != SD_OK);
+        result = SD_ReadBlock(&buff[0], sector << 9, SECTOR_SIZE);
     }
     else
     {
-        SD_ReadMultiBlocks((&buff[0]), sector << 9, SECTOR_SIZE, count);
-        while(SD_GetState() != SD_OK);
+        result = SD_ReadMultiBlocks((&buff[0]), sector << 9, SECTOR_SIZE, count);
     }
-    return RES_OK;
+
+    if(result == SD_OK) return RES_OK;
+    else return RES_ERROR;
 }
-
-
 
 /*-----------------------------------------------------------------------*/
 /* Write Sector(s)                                                       */
@@ -84,21 +84,20 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
+    SD_Error result;
     if(count == 1)
     {
-        SD_WriteBlock((BYTE*)(&buff[0]),sector << 9, SECTOR_SIZE);
-        while(SD_GetState() != SD_OK);
+        result = SD_WriteBlock((BYTE*)(&buff[0]),sector << 9, SECTOR_SIZE);
     }
     else
     {
-        SD_WriteMultiBlocks((BYTE*)(&buff[0]) , sector << 9, SECTOR_SIZE, count);
-        while(SD_GetState() != SD_OK);
+        result = SD_WriteMultiBlocks((BYTE*)(&buff[0]) , sector << 9, SECTOR_SIZE, count);
     }
-    return RES_OK;
+
+    if(result == SD_OK) return RES_OK;
+    else return RES_ERROR;
 }
-
 #endif
-
 
 /*-----------------------------------------------------------------------*/
 /* Miscellaneous Functions                                               */

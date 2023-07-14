@@ -21,34 +21,8 @@
 #define  delay_ms(x)  Delay_Ms(x)
 
 
-/*SDIO flag*/
-#define SDIO_FLAG_CCRCFAIL                  ((uint32_t)0x00000001)
-#define SDIO_FLAG_DCRCFAIL                  ((uint32_t)0x00000002)
-#define SDIO_FLAG_CTIMEOUT                  ((uint32_t)0x00000004)
-#define SDIO_FLAG_DTIMEOUT                  ((uint32_t)0x00000008)
-#define SDIO_FLAG_TXUNDERR                  ((uint32_t)0x00000010)
-#define SDIO_FLAG_RXOVERR                   ((uint32_t)0x00000020)
-#define SDIO_FLAG_CMDREND                   ((uint32_t)0x00000040)
-#define SDIO_FLAG_CMDSENT                   ((uint32_t)0x00000080)
-#define SDIO_FLAG_DATAEND                   ((uint32_t)0x00000100)
-#define SDIO_FLAG_STBITERR                  ((uint32_t)0x00000200)
-#define SDIO_FLAG_DBCKEND                   ((uint32_t)0x00000400)
-#define SDIO_FLAG_CMDACT                    ((uint32_t)0x00000800)
-#define SDIO_FLAG_TXACT                     ((uint32_t)0x00001000)
-#define SDIO_FLAG_RXACT                     ((uint32_t)0x00002000)
-#define SDIO_FLAG_TXFIFOHE                  ((uint32_t)0x00004000)
-#define SDIO_FLAG_RXFIFOHF                  ((uint32_t)0x00008000)
-#define SDIO_FLAG_TXFIFOF                   ((uint32_t)0x00010000)
-#define SDIO_FLAG_RXFIFOF                   ((uint32_t)0x00020000)
-#define SDIO_FLAG_TXFIFOE                   ((uint32_t)0x00040000)
-#define SDIO_FLAG_RXFIFOE                   ((uint32_t)0x00080000)
-#define SDIO_FLAG_TXDAVL                    ((uint32_t)0x00100000)
-#define SDIO_FLAG_RXDAVL                    ((uint32_t)0x00200000)
-#define SDIO_FLAG_SDIOIT                    ((uint32_t)0x00400000)
-#define SDIO_FLAG_CEATAEND                  ((uint32_t)0x00800000)
-
 /* SDIO clock */
-#define SDIO_INIT_CLK_DIV        0xB2
+#define SDIO_INIT_CLK_DIV        238//0xB2
 #define SDIO_TRANSFER_CLK_DIV    0x00
 
 /* SDIO work mode */
@@ -331,7 +305,8 @@ extern SD_CardInfo SDCardInfo;
 /*CMD8*/
 #define SDIO_SEND_IF_COND               ((u32)0x00000008)
 
-SD_Error SD_Init();
+void SD_Init();
+SD_Error SD_Connect();
 void SDIO_Clock_Set(u8 clkdiv);
 void SDIO_Send_Cmd(u8 cmdindex,u8 waitrsp,u32 arg);
 void SDIO_Send_Data_Cfg(u32 datatimeout,u32 datalen,u8 blksize,u8 dir);

@@ -24,9 +24,16 @@ int main(void)
 	USART_Printf_Init(115200);	
 	printf("SystemClk:%d\r\n",SystemCoreClock);
 	printf( "ChipID:%08x\r\n", DBGMCU_GetCHIPID());
-	printf("This is printf example\r\n");
+	printf("Paint table firmware\r\n");
 
 	fileManager = new FileManager();
+	FM_RESULT result;
+
+	do
+    {
+        result = fileManager->connectSDCard();
+        delay_ms(1000);
+    }while(result);
 
 	while(1)
     {
