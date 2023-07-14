@@ -98,7 +98,7 @@ FM_RESULT FileManager::loadPlaylist()
     while(f_gets(buf, 256, &playlistFile))
     {
         std::string currentFileName(buf);
-        currentFileName.erase(currentFileName.size()-1); // remove /n
+        currentFileName.erase(currentFileName.size()-1); // remove \n
         playlist.push_back(currentFileName);
     }
     f_close(&playlistFile);

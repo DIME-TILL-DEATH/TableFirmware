@@ -32,7 +32,7 @@ int main(void)
 	do
     {
         result = fileManager->connectSDCard();
-        delay_ms(1000);
+        Delay_Ms(1000);
     }while(result);
 
 	while(1)
