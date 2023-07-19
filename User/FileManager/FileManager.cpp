@@ -1,4 +1,13 @@
+#include <array>
+#include <iostream>
+#include <sstream>
+#include <vector>
+
 #include "FileManager.hpp"
+
+
+
+using namespace std;
 
 
 FileManager::FileManager()
@@ -94,6 +103,8 @@ FM_RESULT FileManager::loadPlaylist()
         return FM_ERROR;
     }
 
+    playlist.clear();
+
     TCHAR buf[256];
     while(f_gets(buf, 256, &playlistFile))
     {
@@ -103,6 +114,8 @@ FM_RESULT FileManager::loadPlaylist()
     }
     f_close(&playlistFile);
 
+    curPlsPos = -1; // no file loaded
+
     printf("Playlist:\r\n");
     for(uint16_t i=0; i<playlist.size();i++)
     {
@@ -111,4 +124,81 @@ FM_RESULT FileManager::loadPlaylist()
     printf("--------\r\n");
 
     return FM_OK;
+}
+
+FM_RESULT FileManager::loadNextPrint()
+{
+    f_close(&currentPrintFile); // close previous
+
+    curPlsPos++;
+    if(curPlsPos == playlist.size()) curPlsPos = 0;
+
+    string currentFileName = playlist.at(curPlsPos);
+
+    FRESULT result = f_open(&currentPrintFile, currentFileName.c_str(), FA_READ);
+    if(result != FR_OK)
+    {
+        printf("Can't open print file %s, result: %d\r\n", currentFileName.c_str(), result);
+        return FM_ERROR;
+    }
+
+    printf("File %s succesfully opened. Printing...\r\n", currentFileName.c_str());
+
+    return FM_OK;
+}
+
+vector<GCode::GAbstractComm*> FileManager::readNextBlock()
+{
+    TCHAR readBuf[512];
+    TCHAR* result;
+    vector<GCode::GAbstractComm*> answer;
+
+    do
+    {
+        result = f_gets(readBuf, 512, &currentPrintFile);
+        if(result)
+        {
+            istringstream commString(readBuf);
+            vector<string> strArgs;
+
+            for (string line; getline(commString, line, ' '); )
+            {
+                strArgs.push_back(line);
+            }
+
+            // forming commands:
+            if(strArgs.at(0) == string("M51"))
+            {
+                GCode::M51Comm* command = new GCode::M51Comm(strArgs.at(1));
+                answer.push_back(command);
+            }
+            else if(strArgs.at(0) == "G1")
+            {
+                string strValue = strArgs.at(1);
+                strValue.erase(0, 1);
+                float_t x = stof(strValue);
+
+                strValue = strArgs.at(2);
+                strValue.erase(0, 1);
+                float_t y = stof(strValue);;
+
+                strValue = strArgs.at(3);
+                strValue.erase(0, 1);
+                float_t speed = stof(strValue);;
+                GCode::G1Comm* command = new GCode::G1Comm({x, y}, speed);
+                answer.push_back(command);
+            }
+            else if(strArgs.at(0) == string("G4"))
+            {
+                string strValue = strArgs.at(1);
+                strValue.erase(0, 1);
+                uint32_t value = stoi(strValue);
+
+                GCode::G4Comm* command = new GCode::G4Comm(value);
+                answer.push_back(command);
+            }
+        }
+    }while(result && answer.size()<blockSize);
+
+    return answer;
 }

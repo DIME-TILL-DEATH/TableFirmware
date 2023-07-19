@@ -1,12 +1,21 @@
 #ifndef USER_FILEMANAGER_HPP_
 #define USER_FILEMANAGER_HPP_
 
-#include "sdio.h"
-#include "debug.h"
-#include "FatFs/ff.h"
-
 #include <queue>
 #include <string>
+#include <memory>
+#include <stdexcept>
+
+#include "debug.h"
+#include "sdio.h"
+
+#include "FatFs/ff.h"
+
+#include "Coordinates.hpp"
+#include "GCode/GAbstractComm.hpp"
+#include "GCode/M51Comm.hpp"
+#include "GCode/G1Comm.hpp"
+#include "GCode/G4Comm.hpp"
 
 typedef enum
 {
@@ -20,9 +29,15 @@ public:
     FileManager();
 
     FM_RESULT connectSDCard();
+    FM_RESULT loadNextPrint();
+
+    static constexpr uint8_t blockSize{16};
+
+    std::vector<GCode::GAbstractComm*> readNextBlock();
 private:
     FATFS fatFs;
     FIL currentPrintFile;
+    int16_t curPlsPos{-1};
     std::vector<std::string> playlist;
 
     FM_RESULT loadPlaylist();
