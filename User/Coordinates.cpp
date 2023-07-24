@@ -4,10 +4,19 @@ using namespace Coord;
 
 PolarPoint Coord::convertDecartToPolar(const DecartPoint& decartPoint)
 {
-    PolarPoint polarPoint;
+    PolarPoint polarPoint{0, 0};
 
-    polarPoint.r = pow(decartPoint.x*decartPoint.x + decartPoint.y*decartPoint.y, 0.5);
-    polarPoint.fi = tan(decartPoint.x/decartPoint.y);
+    polarPoint.r = sqrt(decartPoint.x*decartPoint.x + decartPoint.y*decartPoint.y);
+
+    if(decartPoint.x != 0)
+    {
+        polarPoint.fi = atan(decartPoint.y/decartPoint.x);
+    }
+    else
+    {
+        if(decartPoint.y > 0) polarPoint.fi = M_PI_2;
+        else polarPoint.fi = 3 * M_PI_2;
+    }
 
     return polarPoint;
 }
