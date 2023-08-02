@@ -44,7 +44,6 @@ int main(void)
     {
         result = fileManager->connectSDCard();
         Delay_Ms(1000);
-        printf("sd card connect error\r\n");
     }while(result);
 
 	while(1)
@@ -52,8 +51,6 @@ int main(void)
 	    FM_RESULT result = fileManager->loadNextPrint();
 	    if(result == FM_OK)
 	    {
-	        printer->findCenter();
-
             std::vector<GCode::GAbstractComm*> nextCommBlock;
             do{
                 while(printer->state() != PrinterState::IDLE) {}

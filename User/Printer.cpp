@@ -100,12 +100,13 @@ bool Printer::findCenter()
     NVIC_DisableIRQ(TIM4_IRQn);
 
     printf("Finding table center...\r\n");
+    currentPosition.x = 0;
+    currentPosition.y = 0;
+
     NVIC_EnableIRQ(TIM2_IRQn);
     NVIC_EnableIRQ(TIM3_IRQn);
     NVIC_EnableIRQ(TIM4_IRQn);
 
-//    currentPosition.x = 0;
-//    currentPosition.y = 0;
     return true;
 }
 
