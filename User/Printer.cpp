@@ -6,8 +6,14 @@ Printer::Printer()
 {
     m_state = PrinterState::IDLE;
 
+    currentPosition.x = 0;
+    currentPosition.y = 0;
+
     timersInit();
     pinsInit();
+
+//    fiTicksCoef = (((float_t)gear2TeethCount/(float_t)gear1TeethCount) * motorRoundTicks) / (2 * M_PI);
+    fiTicksCoef = motorRoundTicks / (2 * M_PI);
 }
 
 void Printer::timersInit()
@@ -17,8 +23,8 @@ void Printer::timersInit()
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4, ENABLE);
 
     // Make step timers
-    TIM_TimeBaseStructure.TIM_Period = 1000;
-    TIM_TimeBaseStructure.TIM_Prescaler = SystemCoreClock/1000000; // 1us
+    TIM_TimeBaseStructure.TIM_Period = 10000;
+    TIM_TimeBaseStructure.TIM_Prescaler = SystemCoreClock/timerPrescaler; // 1us
     TIM_TimeBaseStructure.TIM_ClockDivision = 0;
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
@@ -46,6 +52,7 @@ void Printer::timersInit()
     TIM_Cmd(TIM4, ENABLE);
     TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
     NVIC_EnableIRQ(TIM4_IRQn);
+
 }
 
 void Printer::pinsInit()
@@ -56,11 +63,11 @@ void Printer::pinsInit()
 
     GPIO_InitTypeDef  GPIO_InitStructure = {0};
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 
 
-    pinRStep.pin = GPIO_Pin_12;
-    pinRStep.port = GPIOD;
+    pinRStep.pin = GPIO_Pin_4;
+    pinRStep.port = GPIOB;
     GPIO_InitStructure.GPIO_Pin = pinRStep.pin;
     GPIO_Init(pinRStep.port, &GPIO_InitStructure);
 
@@ -70,20 +77,27 @@ void Printer::pinsInit()
     GPIO_Init(pinRDir.port, &GPIO_InitStructure);
 
 
-    pinFiStep.pin = GPIO_Pin_14;
-    pinFiStep.port = GPIOD;
+    pinFiStep.pin = GPIO_Pin_1;
+    pinFiStep.port = GPIOB;
     GPIO_InitStructure.GPIO_Pin = pinFiStep.pin;
     GPIO_Init(pinFiStep.port, &GPIO_InitStructure);
 
-    pinFiDir.pin = GPIO_Pin_15;
-    pinFiDir.port = GPIOD;
+    pinFiDir.pin = GPIO_Pin_0;
+    pinFiDir.port = GPIOB;
     GPIO_InitStructure.GPIO_Pin = pinFiDir.pin;
     GPIO_Init(pinFiDir.port, &GPIO_InitStructure);
 }
 
 bool Printer::findCenter()
 {
+    NVIC_DisableIRQ(TIM2_IRQn);
+    NVIC_DisableIRQ(TIM3_IRQn);
+    NVIC_DisableIRQ(TIM4_IRQn);
+
     printf("Finding table center...\r\n");
+    NVIC_EnableIRQ(TIM2_IRQn);
+    NVIC_EnableIRQ(TIM3_IRQn);
+    NVIC_EnableIRQ(TIM4_IRQn);
     return true;
 }
 
@@ -117,9 +131,8 @@ void Printer::printRoutine()
 
             float_t l = sqrt(pow((nextPoint.x - currentPosition.x), 2)
                             + pow((nextPoint.y - currentPosition.y), 2));
-            targetSteps = l*stepSize;
 
-            printf("=steps:%d ", targetSteps);
+            float_t timeInSec = l/speed;
 
             Coord::PolarPoint curPolarPoint = Coord::convertDecartToPolar(currentPosition);
             Coord::PolarPoint tarPolarPoint = Coord::convertDecartToPolar(nextPoint);
@@ -130,19 +143,32 @@ void Printer::printRoutine()
             if(deltaR > 0) GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_SET);
             else GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_RESET);;
 
-            if(deltaFi >0) GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_SET);
-            else GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_RESET);
+            uint8_t dirFi;
+            if(deltaFi >0)
+                {
+                GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_SET);
+                dirFi = 1;
+                }
+            else {
+                GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_RESET);
+                dirFi = 0;
+            }
 
             deltaFi = abs(deltaFi);
             deltaR = abs(deltaR);
 
-            if(targetSteps == 0) targetSteps = 1; //?????
+            rTicksCounter = deltaR * rTicksCoef; ///targetSteps;
+            fiTicksCounter = radiansToMotorTicks(deltaFi);
 
-            rTicksCounter = rStepTicks = deltaR * rTicksCoef/targetSteps;
-            fiTicksCounter = fiStepTicks = deltaFi * fiTicksCoef/targetSteps;
+            float_t rPeriod = timeInSec/rTicksCounter;
+            float_t fiPeriod = timeInSec/fiTicksCounter;
 
+            printf("=time: %lf, tar Fi:%lf\r\n", timeInSec, tarPolarPoint.fi * 360 / (M_PI * 2));
+            printf("==r ticks=%d, r period=%lf\r\n", rTicksCounter, rPeriod);
+            printf("==fi ticks=%d, fi period=%lf\r\n", fiTicksCounter, fiPeriod);
 
-            printf("==nxt pnt ticks in step r=%d pi=%d\r\n", rStepTicks, fiStepTicks);
+            setRStepPeriod(rPeriod);
+            setFiStepPeriod(fiPeriod);
 
             m_state = PrinterState::PRINTING;
         }
@@ -152,34 +178,62 @@ void Printer::printRoutine()
     {
         if(rTicksCounter==0 && fiTicksCounter==0)
         {
-            m_state = PrinterState::FINISHED_STEP;
-        }
-    }
-    else if(m_state == PrinterState::FINISHED_STEP)
-    {
-        if(targetSteps>0)
-        {
-            rTicksCounter = rStepTicks;
-            fiTicksCounter = fiStepTicks;
-
-            targetSteps--;
-        }
-        else
-        {
-            currentPosition = nextPoint;
             m_state = PrinterState::SETTLING;
+            currentPosition = nextPoint;
         }
     }
+//    else if(m_state == PrinterState::FINISHED_STEP)
+//    {
+//        if(targetSteps>0)
+//        {
+//            rTicksCounter = rStepTicks;
+//            fiTicksCounter = fiStepTicks;
+//
+//            targetSteps--;
+//        }
+//        else
+//        {
+//            currentPosition = nextPoint;
+//            m_state = PrinterState::SETTLING;
+//        }
+//    }
+}
 
+uint32_t Printer::radiansToMotorTicks(float_t radians)
+{
+    return round(fiTicksCoef * radians) * uTicks;
+}
+
+void Printer::setRStepPeriod(float_t timeInSec)
+{
+    uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
+
+    printf("TIM2 autoreload=%d\r\n", timerPeriod);
+    TIM_SetAutoreload(TIM2, timerPeriod);
+    TIM_SetCounter(TIM2, 0);
+}
+
+void Printer::setFiStepPeriod(float_t timeInSec)
+{
+    uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
+    printf("TIM3 autoreload=%d\r\n", timerPeriod);
+    TIM_SetAutoreload(TIM3, timerPeriod);
+    TIM_SetCounter(TIM3, 0);
 }
 
 void Printer::makeRStep()
 {
     if(rTicksCounter>0)
     {
-        rTicksCounter--;
-        GPIO_WriteBit(pinRStep.port, pinRStep.pin, Bit_SET);
-        GPIO_WriteBit(pinRStep.port, pinRStep.pin, Bit_RESET);
+        if(GPIO_ReadOutputDataBit(pinRStep.port, pinRStep.pin) == Bit_RESET)
+        {
+            GPIO_WriteBit(pinRStep.port, pinRStep.pin, Bit_SET);
+        }
+        else
+        {
+            GPIO_WriteBit(pinRStep.port, pinRStep.pin, Bit_RESET);
+            rTicksCounter--;
+        }
     }
 }
 
@@ -187,8 +241,14 @@ void Printer::makeFiStep()
 {
     if(fiTicksCounter>0)
     {
-        fiTicksCounter--;
-        GPIO_WriteBit(pinFiStep.port, pinFiStep.pin, Bit_SET);
-        GPIO_WriteBit(pinFiStep.port, pinFiStep.pin, Bit_RESET);
+        if(GPIO_ReadOutputDataBit(pinFiStep.port, pinFiStep.pin) == Bit_RESET)
+        {
+            GPIO_WriteBit(pinFiStep.port, pinFiStep.pin, Bit_SET);
+        }
+        else
+        {
+            GPIO_WriteBit(pinFiStep.port, pinFiStep.pin, Bit_RESET);
+            fiTicksCounter--;
+        }
     }
 }

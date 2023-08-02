@@ -7,16 +7,9 @@ PolarPoint Coord::convertDecartToPolar(const DecartPoint& decartPoint)
     PolarPoint polarPoint{0, 0};
 
     polarPoint.r = sqrt(decartPoint.x*decartPoint.x + decartPoint.y*decartPoint.y);
+    polarPoint.fi = atan2(decartPoint.y, decartPoint.x);
 
-    if(decartPoint.x != 0)
-    {
-        polarPoint.fi = atan(decartPoint.y/decartPoint.x);
-    }
-    else
-    {
-        if(decartPoint.y > 0) polarPoint.fi = M_PI_2;
-        else polarPoint.fi = 3 * M_PI_2;
-    }
+    if(decartPoint.y < 0) polarPoint.fi += M_PI * 2;
 
     return polarPoint;
 }

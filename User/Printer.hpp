@@ -44,12 +44,7 @@ private:
     Coord::DecartPoint currentPosition{0, 0};
     Coord::DecartPoint nextPoint;
 
-    uint32_t targetSteps;
-
-    uint32_t rStepTicks{0};
     uint32_t rTicksCounter{0};
-
-    uint32_t fiStepTicks{0};
     uint32_t fiTicksCounter{0};
 
     PrinterPin pinRStep;
@@ -60,10 +55,25 @@ private:
     void timersInit();
     void pinsInit();
 
-    static constexpr uint16_t stepSize = 10; // step size = 1mm
+    void setRStepPeriod(float_t timeInSec);
+    void setFiStepPeriod(float_t timeInSec);
 
-    static constexpr uint16_t rTicksCoef = 1000;
-    static constexpr uint16_t fiTicksCoef = 10000;
+    uint32_t radiansToMotorTicks(float_t radians);
+
+    static constexpr uint32_t timerPrescaler = 1000000; // 1us
+
+    static constexpr float_t speed = 10; // mm/sec
+
+    static constexpr uint16_t uTicks = 16;
+
+    static constexpr uint16_t stepSize = 1; // step size = 1mm
+
+    static constexpr uint16_t rTicksCoef = 1;
+
+    float_t fiTicksCoef;
+    static constexpr uint16_t gear1TeethCount = 20;
+    static constexpr uint16_t gear2TeethCount = 202;
+    static constexpr uint16_t motorRoundTicks = 200;
 };
 
 #endif /* USER_PRINTER_HPP_ */

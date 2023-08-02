@@ -44,6 +44,7 @@ int main(void)
     {
         result = fileManager->connectSDCard();
         Delay_Ms(1000);
+        printf("sd card connect error\r\n");
     }while(result);
 
 	while(1)
@@ -51,49 +52,48 @@ int main(void)
 	    FM_RESULT result = fileManager->loadNextPrint();
 	    if(result == FM_OK)
 	    {
-//	        if(printer->state() == PrinterState::IDLE)
-//	        {
-	            std::vector<GCode::GAbstractComm*> nextCommBlock;
-                do{
-                    while(printer->state() != PrinterState::IDLE) {}
+	        printer->findCenter();
 
-                    nextCommBlock = fileManager->readNextBlock();
+            std::vector<GCode::GAbstractComm*> nextCommBlock;
+            do{
+                while(printer->state() != PrinterState::IDLE) {}
 
-                    for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
+                nextCommBlock = fileManager->readNextBlock();
+
+                for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
+                {
+                    GCode::GAbstractComm* aComm = nextCommBlock.at(cnt);
+
+                    switch(aComm->commType())
                     {
-                        GCode::GAbstractComm* aComm = nextCommBlock.at(cnt);
-
-                        switch(aComm->commType())
+                        case GCode::GCommType::M51:
                         {
-                            case GCode::GCommType::M51:
-                            {
-                                printer->findCenter();
-                                break;
-                            }
-                            case GCode::GCommType::G1:
-                            {
-                                GCode::G1Comm* g1Comm = static_cast<GCode::G1Comm*>(aComm);
-                                if(g1Comm)
-                                {
-                                    printer->pushPrintPoint(g1Comm->decartCoordinates());
-                                }
-                                break;
-                            }
-                            case GCode::GCommType::G4:
-                            {
-                                GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(aComm);
-                                if(g4Comm)
-                                {
-
-                                }
-                                break;
-                            }
+                            printer->findCenter();
+                            break;
                         }
-                        delete aComm;
-                        Delay_Ms(1000);
+                        case GCode::GCommType::G1:
+                        {
+                            GCode::G1Comm* g1Comm = static_cast<GCode::G1Comm*>(aComm);
+                            if(g1Comm)
+                            {
+                                printer->pushPrintPoint(g1Comm->decartCoordinates());
+                            }
+                            break;
+                        }
+                        case GCode::GCommType::G4:
+                        {
+                            GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(aComm);
+                            if(g4Comm)
+                            {
+
+                            }
+                            break;
+                        }
                     }
-                }while(nextCommBlock.size()>0);
-//	        }
+                    delete aComm;
+                    Delay_Ms(1000);
+                }
+            }while(nextCommBlock.size()>0);
 	    }
 	}
 }
