@@ -1,19 +1,20 @@
 #ifndef USER_PRINTER_HPP_
 #define USER_PRINTER_HPP_
 
+#include <vector>
+#include <queue>
+
 #include "debug.h"
 
 #include "Coordinates.hpp"
-#include <vector>
-#include <queue>
 
 typedef enum
 {
     ERROR = 0,
     IDLE,
-    SETTLING,
+    SET_POINT,
     PRINTING,
-    FINISHED_STEP
+    SET_STEP
 }PrinterState;
 
 typedef struct
@@ -42,10 +43,16 @@ private:
     std::queue<Coord::DecartPoint> m_printJob;
 
     Coord::DecartPoint currentPosition{0, 0};
-    Coord::DecartPoint nextPoint;
+    Coord::DecartPoint targetPosition{0, 0};
 
     uint32_t rTicksCounter{0};
     uint32_t fiTicksCounter{0};
+
+    uint32_t fiSumTicks{0};
+
+    double_t stepX;
+    double_t stepY;
+    double_t stepTime;
 
     PrinterPin pinRStep;
     PrinterPin pinRDir;
@@ -55,24 +62,22 @@ private:
     void timersInit();
     void pinsInit();
 
-    void setRStepPeriod(float_t timeInSec);
-    void setFiStepPeriod(float_t timeInSec);
+    void setRStepPeriod(double_t timeInSec);
+    void setFiStepPeriod(double_t timeInSec);
 
-    uint32_t radiansToMotorTicks(float_t radians);
+    uint32_t radiansToMotorTicks(double_t radians);
 
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
 
-    static constexpr float_t speed = 10; // mm/sec
+    static constexpr double_t speed = 500; //
+    static constexpr double_t stepSize = 0.5; // step size = 1mm
 
     static constexpr uint16_t uTicks = 16;
+    static constexpr uint16_t rTicksCoef = 100;
 
-    static constexpr uint16_t stepSize = 1; // step size = 1mm
-
-    static constexpr uint16_t rTicksCoef = 1;
-
-    float_t fiTicksCoef;
+    double_t fiTicksCoef;
     static constexpr uint16_t gear1TeethCount = 20;
-    static constexpr uint16_t gear2TeethCount = 202;
+    static constexpr uint16_t gear2TeethCount = 20;//202;
     static constexpr uint16_t motorRoundTicks = 200;
 };
 

@@ -85,7 +85,7 @@ int main(void)
                             GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(aComm);
                             if(g4Comm)
                             {
-
+                                Delay_Ms(1000);
                             }
                             break;
                         }

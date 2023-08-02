@@ -9,15 +9,15 @@ namespace Coord
 
 typedef struct
 {
-    float_t x;
-    float_t y;
+    double_t x;
+    double_t y;
 }DecartPoint;
 
 
 typedef struct
 {
-    float_t fi;
-    float_t r;
+    double_t fi;
+    double_t r;
 }PolarPoint;
 
 PolarPoint convertDecartToPolar(const DecartPoint& decartPoint);
