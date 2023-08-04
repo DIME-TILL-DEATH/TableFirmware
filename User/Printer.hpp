@@ -66,6 +66,7 @@ private:
     void setFiStepPeriod(double_t timeInSec);
 
     uint32_t radiansToMotorTicks(double_t radians);
+    uint32_t lengthToMotorTicks(double_t length);
 
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
 
@@ -73,12 +74,16 @@ private:
     static constexpr double_t stepSize = 0.5; // step size = 1mm
 
     static constexpr uint16_t uTicks = 16;
-    static constexpr uint16_t rTicksCoef = 100;
+    static constexpr uint16_t motorRoundTicks = 200;
+
+    double_t rTicksCoef;
+    static constexpr uint16_t rGearTeethCount = 20;
+    static constexpr uint16_t rGearStep = 2;
 
     double_t fiTicksCoef;
-    static constexpr uint16_t gear1TeethCount = 20;
-    static constexpr uint16_t gear2TeethCount = 20;//202;
-    static constexpr uint16_t motorRoundTicks = 200;
+    static constexpr uint16_t fiGear1TeethCount = 20;
+    static constexpr uint16_t fiGear2TeethCount = 20;//202;
+
 };
 
 #endif /* USER_PRINTER_HPP_ */

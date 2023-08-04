@@ -22,6 +22,8 @@ typedef struct
 
 PolarPoint convertDecartToPolar(const DecartPoint& decartPoint);
 DecartPoint convertPolarToDecart(const PolarPoint& polarPoint);
+
+bool isLinesCross(DecartPoint point11, DecartPoint point12, DecartPoint point21, DecartPoint point22);
 };
 
 

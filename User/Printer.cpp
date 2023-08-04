@@ -12,7 +12,8 @@ Printer::Printer()
     timersInit();
     pinsInit();
 
-    fiTicksCoef = (((float_t)gear2TeethCount/(float_t)gear1TeethCount) * motorRoundTicks) / (2 * M_PI);
+    rTicksCoef = (double_t)motorRoundTicks / (double_t)(rGearStep * rGearTeethCount);
+    fiTicksCoef = (((double_t)fiGear2TeethCount/(double_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
 }
 
 void Printer::timersInit()
@@ -168,7 +169,10 @@ void Printer::printRoutine()
 
         case PrinterState::SET_STEP:
         {
-            if((fabs(targetPosition.x - currentPosition.x) <= fabs(stepX)) && (fabs(targetPosition.y - currentPosition.y) <= fabs(stepY)))
+            double_t minErrX = (stepX == 0) ? stepSize : fabs(stepX);
+            double_t minErrY = (stepY == 0) ? stepSize : fabs(stepY);
+
+            if((fabs(targetPosition.x - currentPosition.x) < minErrX) && (fabs(targetPosition.y - currentPosition.y) < minErrY))
             {
 //                printf("===last fi sum ticks: %d\r\n", fiSumTicks);
                 m_state = PrinterState::SET_POINT;
@@ -184,16 +188,29 @@ void Printer::printRoutine()
                 double_t deltaR = stepPolarPoint.r - curPolarPoint.r;
                 double_t deltaFi = stepPolarPoint.fi - curPolarPoint.fi;
 
+                // x-axis positive cross(polar +2pi) not align
+                if(fabs(deltaFi) > M_PI)
+                {
+                    if(Coord::isLinesCross(currentPosition, stepPosition, {0, 0}, {1000, 0}))
+                    {
+                        printf("!!!!!fi correction! deltaFi before: %lf => \r\n", deltaFi * 360 / (M_PI * 2));
+                        deltaFi = (-1) * copysign(2 * M_PI - fabs(deltaFi), deltaFi);
+                    }
+                }
+
                 if(deltaR > 0) GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_SET);
                 else GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_RESET);;
 
                 if(deltaFi >0) GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_SET);
                 else GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_RESET);
 
+
+//                printf("deltaR: %lf, deltaFi: %lf\r\n", deltaR * 360 / (M_PI * 2), deltaFi * 360 / (M_PI * 2));
+
                 deltaFi = abs(deltaFi);
                 deltaR = abs(deltaR);
 
-                rTicksCounter = deltaR * rTicksCoef;
+                rTicksCounter = lengthToMotorTicks(deltaR);
                 fiTicksCounter = radiansToMotorTicks(deltaFi);
 
 //                fiSumTicks += fiTicksCounter;
@@ -201,17 +218,15 @@ void Printer::printRoutine()
                 float_t rPeriod = stepTime/rTicksCounter;
                 float_t fiPeriod = stepTime/fiTicksCounter;
 //
-//                printf("++++++time: %lf, tar Fi:%lf\r\n", stepTime, tarPolarPoint.fi * 360 / (M_PI * 2));
-//                printf("+++++++ticks=%d, r period=%lf\r\n", rTicksCounter, rPeriod);
-//                printf("+++++++ticks=%d, fi period=%lf\r\n", fiTicksCounter, fiPeriod);
-//
                 setRStepPeriod(rPeriod);
                 setFiStepPeriod(fiPeriod);
                 currentPosition.x += stepX;
                 currentPosition.y += stepY;
 
-//                printf("----deltaR: %lf, deltaFi: %lf\r\n", deltaR * 360 / (M_PI * 2), deltaFi * 360 / (M_PI * 2));
-//                printf("==cur: (%lf, %lf)----r ticks=%d, fi ticks=%d\r\n", currentPosition.x, currentPosition.y, rTicksCounter, fiTicksCounter);
+
+//                printf("==curXY(%f, %f)/curRFi(%f, %f))--r tcks=%d, fi tck=%d\r\n", currentPosition.x, currentPosition.y,
+//                                                                                        curPolarPoint.r, curPolarPoint.fi * 360 / (M_PI * 2),
+//                                                                                        rTicksCounter, fiTicksCounter);
 
 
                 m_state = PrinterState::PRINTING;
@@ -236,6 +251,11 @@ uint32_t Printer::radiansToMotorTicks(double_t radians)
     return round(fiTicksCoef * radians * uTicks);
 }
 
+uint32_t Printer::lengthToMotorTicks(double_t length)
+{
+    return round(rTicksCoef * length * uTicks);
+}
+
 void Printer::setRStepPeriod(double_t timeInSec)
 {
     uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
@@ -248,7 +268,12 @@ void Printer::setRStepPeriod(double_t timeInSec)
 void Printer::setFiStepPeriod(double_t timeInSec)
 {
     uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
-//    printf("TIM3 autoreload=%d\r\n", timerPeriod);
+
+    if(timerPeriod < 700)
+    {
+        printf("TIM3 correct autoreload counted: %d, settled: 750\r\n", timerPeriod);
+        timerPeriod = 750;
+    }
     TIM_SetAutoreload(TIM3, timerPeriod);
     TIM_SetCounter(TIM3, 0);
 }
