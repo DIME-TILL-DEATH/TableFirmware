@@ -65,20 +65,12 @@ void Printer::pinsInit()
 
 
     pinRStep.pin = GPIO_Pin_4;
-    pinRStep.port = GPIOB;
+    pinRStep.port = GPIOA;
     GPIO_InitStructure.GPIO_Pin = pinRStep.pin;
     GPIO_Init(pinRStep.port, &GPIO_InitStructure);
 
-    pinRStep.pin = GPIO_Pin_4;
-    pinRStep.port = GPIOB;
-    GPIO_InitStructure.GPIO_Pin = pinRStep.pin;
-    GPIO_Init(pinRStep.port, &GPIO_InitStructure);
-
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-    pinRDir.pin = GPIO_Pin_13;
-    pinRDir.port = GPIOD;
+    pinRDir.pin = GPIO_Pin_5;
+    pinRDir.port = GPIOA;
     GPIO_InitStructure.GPIO_Pin = pinRDir.pin;
     GPIO_Init(pinRDir.port, &GPIO_InitStructure);
 
