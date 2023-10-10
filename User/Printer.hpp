@@ -14,7 +14,9 @@ typedef enum
     IDLE,
     SET_POINT,
     PRINTING,
-    SET_STEP
+    SET_STEP,
+    SEARCH_R_ZERO,
+    SEARCH_FI_ZERO
 }PrinterState;
 
 typedef struct
@@ -38,6 +40,9 @@ public:
 
     void makeRStep();
     void makeFiStep();
+
+    void trigFiZero() {fiCenterTrigger = true;};
+    void trigRZero() {rCenterTrigger = true;};
 private:
     PrinterState m_state;
     std::queue<Coord::DecartPoint> m_printJob;
@@ -56,8 +61,11 @@ private:
 
     PrinterPin pinRStep;
     PrinterPin pinRDir;
+    PrinterPin pinRSensor;
+
     PrinterPin pinFiStep;
     PrinterPin pinFiDir;
+    PrinterPin pinFiSensor;
 
     void timersInit();
     void pinsInit();
@@ -82,8 +90,10 @@ private:
 
     double_t fiTicksCoef;
     static constexpr uint16_t fiGear1TeethCount = 20;
-    static constexpr uint16_t fiGear2TeethCount = 20;//202;
+    static constexpr uint16_t fiGear2TeethCount = 160;//202;
 
+    bool fiCenterTrigger = false;
+    bool rCenterTrigger = false;
 };
 
 #endif /* USER_PRINTER_HPP_ */

@@ -1,10 +1,13 @@
 eclipse.preferences.version=1
+encoding//Core/core_riscv.h=GBK
 encoding//Debug/debug.c=GBK
 encoding//Debug/debug.h=GBK
 encoding//Peripheral/inc/ch32v30x.h=GBK
+encoding//Peripheral/inc/ch32v30x_exti.h=GBK
 encoding//Peripheral/inc/ch32v30x_gpio.h=GBK
 encoding//Peripheral/inc/ch32v30x_sdio.h=GBK
 encoding//Peripheral/inc/ch32v30x_tim.h=GBK
+encoding//Peripheral/src/ch32v30x_exti.c=GBK
 encoding//Peripheral/src/ch32v30x_gpio.c=GBK
 encoding//Peripheral/src/ch32v30x_rcc.c=GBK
 encoding//Peripheral/src/ch32v30x_sdio.c=GBK

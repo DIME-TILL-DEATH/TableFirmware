@@ -13,6 +13,8 @@ FileManager* fileManager;
 Printer* printer;
 
 extern "C" {
+    void EXTI15_10_IRQHandler(void) __attribute__((interrupt("WCH-Interrupt-fast")));
+
     void TIM2_IRQHandler(void) __attribute__((interrupt(/*"WCH-Interrupt-fast"*/)));
     void TIM3_IRQHandler(void) __attribute__((interrupt(/*"WCH-Interrupt-fast"*/)));
     void TIM4_IRQHandler(void) __attribute__((interrupt(/*"WCH-Interrupt-fast"*/)));
@@ -97,6 +99,21 @@ int main(void)
 
 extern "C"
 {
+void EXTI15_10_IRQHandler(void)
+{
+    if(EXTI_GetITStatus(EXTI_Line13)  == SET)
+    {
+        printer->trigRZero();
+    }
+
+    if(EXTI_GetITStatus(EXTI_Line14) == SET)
+    {
+        printer->trigFiZero();
+    }
+
+    EXTI_ClearITPendingBit(EXTI_Line13 | EXTI_Line14);
+}
+
 void TIM2_IRQHandler(void)
 {
     printer->makeRStep();

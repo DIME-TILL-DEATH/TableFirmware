@@ -84,6 +84,36 @@ void Printer::pinsInit()
     pinFiDir.port = GPIOB;
     GPIO_InitStructure.GPIO_Pin = pinFiDir.pin;
     GPIO_Init(pinFiDir.port, &GPIO_InitStructure);
+
+    EXTI_InitTypeDef EXTI_InitStructure = {0};
+
+    pinRSensor.pin = GPIO_Pin_13;
+    pinRSensor.port = GPIOB;
+    GPIO_InitStructure.GPIO_Pin = pinRSensor.pin;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(pinRSensor.port, &GPIO_InitStructure);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line13;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+
+    EXTI_Init(&EXTI_InitStructure);
+
+    pinFiSensor.pin = GPIO_Pin_14;
+    pinFiSensor.port = GPIOB;
+    GPIO_InitStructure.GPIO_Pin = pinRSensor.pin;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(pinRSensor.port, &GPIO_InitStructure);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource14);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line14;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+
+    EXTI_Init(&EXTI_InitStructure);
 }
 
 bool Printer::findCenter()
@@ -92,13 +122,35 @@ bool Printer::findCenter()
     NVIC_DisableIRQ(TIM3_IRQn);
     NVIC_DisableIRQ(TIM4_IRQn);
 
+    TIM_SetAutoreload(TIM2, 500);
+    TIM_SetCounter(TIM2, 0);
+    TIM_SetAutoreload(TIM3, 500);
+    TIM_SetCounter(TIM3, 0);
+
     printf("Finding table center...\r\n");
     currentPosition.x = 0;
     currentPosition.y = 0;
 
+    fiCenterTrigger = false;
+    rCenterTrigger = false;
+
+    if(GPIO_ReadInputDataBit(pinFiSensor.port, pinFiSensor.pin) == Bit_SET)
+    {
+        fiCenterTrigger = true;
+    }
+
+    if(GPIO_ReadInputDataBit(pinRSensor.port, pinRSensor.pin) == Bit_SET)
+    {
+        rCenterTrigger = true;
+    }
+
+    m_state = PrinterState::SEARCH_FI_ZERO;
+
     NVIC_EnableIRQ(TIM2_IRQn);
     NVIC_EnableIRQ(TIM3_IRQn);
     NVIC_EnableIRQ(TIM4_IRQn);
+
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
 
     return true;
 }
@@ -235,6 +287,36 @@ void Printer::printRoutine()
             }
             break;
         }
+
+        case PrinterState::SEARCH_FI_ZERO:
+        {
+            if(!fiCenterTrigger)
+            {
+                fiTicksCounter = radiansToMotorTicks(M_PI);
+            }
+            else
+            {
+                fiTicksCounter = 0;
+                m_state = PrinterState::SEARCH_R_ZERO;
+            }
+            break;
+        }
+
+        case PrinterState::SEARCH_R_ZERO:
+        {
+            if(!rCenterTrigger)
+            {
+                // 扶忘扭把忘志抖快扶我快???
+                rTicksCounter = lengthToMotorTicks(20);
+            }
+            else
+            {
+                rTicksCounter = 0;
+                m_state = PrinterState::IDLE;
+                NVIC_DisableIRQ(EXTI15_10_IRQn);
+            }
+            break;
+        }
     }
 }
 
@@ -272,7 +354,7 @@ void Printer::setFiStepPeriod(double_t timeInSec)
 
 void Printer::makeRStep()
 {
-    if(m_state == PrinterState::PRINTING)
+    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_R_ZERO)
     {
         if(rTicksCounter>0)
         {
@@ -291,7 +373,7 @@ void Printer::makeRStep()
 
 void Printer::makeFiStep()
 {
-    if(m_state == PrinterState::PRINTING)
+    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO)
     {
         if(fiTicksCounter>0)
         {
