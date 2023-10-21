@@ -94,8 +94,9 @@ private:
 
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
 
-    static constexpr double_t speed = 1; //
-    static constexpr double_t stepSize = 25; // step size = 1mm
+//    static constexpr double_t speed = 20000; //
+    static constexpr double_t speed = 5; //
+    static constexpr double_t stepSize = 0.1; //
 
     static constexpr uint16_t uTicks = 16;
     static constexpr uint16_t motorRoundTicks = 200;

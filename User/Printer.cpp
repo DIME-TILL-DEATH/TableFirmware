@@ -191,6 +191,9 @@ void Printer::printRoutine()
             {
                 targetPosition = m_printJob.front();
 
+                targetPosition.x = targetPosition.x * 0.5;
+                targetPosition.y = targetPosition.y * 0.5;
+
                 m_printJob.pop();
 
                 fiSumTicks = 0;
@@ -204,7 +207,8 @@ void Printer::printRoutine()
                 float_t sizeCoef = lineLength/stepSize;
                 stepX = deltaX / sizeCoef;
                 stepY = deltaY / sizeCoef;
-                stepTime = sizeCoef / speed;
+
+                stepTime = stepSize / speed;
 
                 printf("current pos:(%lf, %lf), target pos(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
                 printf("length: %lf, coef: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, sizeCoef, stepX, stepY);
@@ -383,7 +387,7 @@ void Printer::setFiStepPeriod(double_t timeInSec)
 {
     uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
 
-    uint16_t minPeriod = 250;
+    uint16_t minPeriod = 100;
 
     if(timerPeriod < minPeriod)
     {
