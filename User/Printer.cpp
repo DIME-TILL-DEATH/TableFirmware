@@ -87,28 +87,28 @@ void Printer::pinsInit()
 
     EXTI_InitTypeDef EXTI_InitStructure = {0};
 
-    pinRSensor.pin = GPIO_Pin_13;
+    pinRSensor.pin = GPIO_Pin_10;
     pinRSensor.port = GPIOB;
     GPIO_InitStructure.GPIO_Pin = pinRSensor.pin;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(pinRSensor.port, &GPIO_InitStructure);
 
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line13;
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource10);
+    EXTI_InitStructure.EXTI_Line = EXTI_RSENS_LINE;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
 
     EXTI_Init(&EXTI_InitStructure);
 
-    pinFiSensor.pin = GPIO_Pin_14;
+    pinFiSensor.pin = GPIO_Pin_13;
     pinFiSensor.port = GPIOB;
     GPIO_InitStructure.GPIO_Pin = pinRSensor.pin;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(pinRSensor.port, &GPIO_InitStructure);
 
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource14);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line14;
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
+    EXTI_InitStructure.EXTI_Line = EXTI_FISENS_LINE;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
     EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
@@ -134,24 +134,31 @@ bool Printer::findCenter()
     fiCenterTrigger = false;
     rCenterTrigger = false;
 
+    GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_SET);
+    GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_RESET);
+
+    m_state = PrinterState::SEARCH_FI_ZERO;
+
     if(GPIO_ReadInputDataBit(pinFiSensor.port, pinFiSensor.pin) == Bit_SET)
     {
         fiCenterTrigger = true;
     }
+    else
+    {
+        setStep(0, -2*M_PI, 30);
+    }
 
-    if(GPIO_ReadInputDataBit(pinRSensor.port, pinRSensor.pin) == Bit_SET)
+    if(GPIO_ReadInputDataBit(pinRSensor.port, pinRSensor.pin) == Bit_RESET)
     {
         rCenterTrigger = true;
     }
 
-    m_state = PrinterState::SEARCH_FI_ZERO;
+    EXTI_ClearITPendingBit(EXTI_FISENS_LINE | EXTI_RSENS_LINE);
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
 
     NVIC_EnableIRQ(TIM2_IRQn);
     NVIC_EnableIRQ(TIM3_IRQn);
     NVIC_EnableIRQ(TIM4_IRQn);
-
-    NVIC_EnableIRQ(EXTI15_10_IRQn);
-
     return true;
 }
 
@@ -188,7 +195,7 @@ void Printer::printRoutine()
 
                 fiSumTicks = 0;
 
-                if(targetPosition.x == currentPosition.x && targetPosition.y == targetPosition.y) return; //skip point
+                if(targetPosition.x == currentPosition.x && currentPosition.y == targetPosition.y) return; //skip point
 
                 float_t deltaX = targetPosition.x - currentPosition.x;
                 float_t deltaY = targetPosition.y - currentPosition.y;
@@ -218,7 +225,6 @@ void Printer::printRoutine()
 
             if((fabs(targetPosition.x - currentPosition.x) < minErrX) && (fabs(targetPosition.y - currentPosition.y) < minErrY))
             {
-//                printf("===last fi sum ticks: %d\r\n", fiSumTicks);
                 m_state = PrinterState::SET_POINT;
             }
             else
@@ -242,31 +248,10 @@ void Printer::printRoutine()
                     }
                 }
 
-                if(deltaR > 0) GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_SET);
-                else GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_RESET);;
+                setStep(deltaR, deltaFi, stepTime);
 
-                if(deltaFi >0) GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_SET);
-                else GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_RESET);
-
-
-//                printf("deltaR: %lf, deltaFi: %lf\r\n", deltaR * 360 / (M_PI * 2), deltaFi * 360 / (M_PI * 2));
-
-                deltaFi = abs(deltaFi);
-                deltaR = abs(deltaR);
-
-                rTicksCounter = lengthToMotorTicks(deltaR);
-                fiTicksCounter = radiansToMotorTicks(deltaFi);
-
-//                fiSumTicks += fiTicksCounter;
-
-                float_t rPeriod = stepTime/rTicksCounter;
-                float_t fiPeriod = stepTime/fiTicksCounter;
-//
-                setRStepPeriod(rPeriod);
-                setFiStepPeriod(fiPeriod);
                 currentPosition.x += stepX;
                 currentPosition.y += stepY;
-
 
 //                printf("==curXY(%f, %f)/curRFi(%f, %f))--r tcks=%d, fi tck=%d\r\n", currentPosition.x, currentPosition.y,
 //                                                                                        curPolarPoint.r, curPolarPoint.fi * 360 / (M_PI * 2),
@@ -290,13 +275,9 @@ void Printer::printRoutine()
 
         case PrinterState::SEARCH_FI_ZERO:
         {
-            if(!fiCenterTrigger)
+            if(fiCenterTrigger)
             {
-                fiTicksCounter = radiansToMotorTicks(M_PI);
-            }
-            else
-            {
-                fiTicksCounter = 0;
+                setStep(-rMoveDiapason * 1.2, 0, 15); // 20% margin
                 m_state = PrinterState::SEARCH_R_ZERO;
             }
             break;
@@ -304,20 +285,79 @@ void Printer::printRoutine()
 
         case PrinterState::SEARCH_R_ZERO:
         {
-            if(!rCenterTrigger)
+            if(rCenterTrigger)
             {
-                // 扶忘扭把忘志抖快扶我快???
-                rTicksCounter = lengthToMotorTicks(20);
-            }
-            else
-            {
-                rTicksCounter = 0;
-                m_state = PrinterState::IDLE;
+                stop();
                 NVIC_DisableIRQ(EXTI15_10_IRQn);
+
+                m_state = PrinterState::IDLE;
             }
             break;
         }
     }
+}
+
+void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
+{
+    bool rDirection;
+
+    rTicksCounter = lengthToMotorTicks(abs(dR));
+    int32_t correctionTicks = lengthToMotorTicks(abs(dFi) * errRonRadian);
+
+    if(dFi > 0) // counter clokwise, R decrease
+    {
+        GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_RESET);
+        if(dR >= 0)
+        {
+            rDirection = 0;
+            rTicksCounter += correctionTicks;
+        }
+        else
+        {
+            int32_t resultTicks = rTicksCounter - correctionTicks;
+
+            if(resultTicks > 0) rDirection = 1;
+            else rDirection = 0;
+
+            rTicksCounter = abs(resultTicks);
+        }
+    }
+    else // clockwise, R increase
+    {
+        GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_SET);
+        if(dR >= 0)
+        {
+            int32_t resultTicks = rTicksCounter - correctionTicks;
+
+            if(resultTicks > 0) rDirection = 0;
+            else rDirection = 1;
+
+            rTicksCounter = abs(resultTicks);
+        }
+        else
+        {
+            rDirection = 1;
+            rTicksCounter += correctionTicks;
+        }
+    }
+
+    GPIO_WriteBit(pinRDir.port, pinRDir.pin, (BitAction)rDirection);
+
+    fiTicksCounter = radiansToMotorTicks(abs(dFi));
+
+//    printf("rT:%d, fiT:%d, corrT:%d\r\n", rTicksCounter, fiTicksCounter, correctionTicks);
+
+    float_t rPeriod = stepTimeInSec/rTicksCounter;
+    float_t fiPeriod = stepTimeInSec/fiTicksCounter;
+
+    setRStepPeriod(rPeriod);
+    setFiStepPeriod(fiPeriod);
+}
+
+void Printer::stop()
+{
+    rTicksCounter = 0;
+    fiTicksCounter = 0;
 }
 
 uint32_t Printer::radiansToMotorTicks(double_t radians)
@@ -343,18 +383,21 @@ void Printer::setFiStepPeriod(double_t timeInSec)
 {
     uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
 
-    if(timerPeriod < 700)
+    uint16_t minPeriod = 250;
+
+    if(timerPeriod < minPeriod)
     {
-        printf("TIM3 correct autoreload counted: %d, settled: 750\r\n", timerPeriod);
-        timerPeriod = 750;
+        printf("TIM3 correct autoreload counted: %d, settled: %d\r\n", timerPeriod, minPeriod);
+        timerPeriod = minPeriod;
     }
+//    printf("TIM3 autoreload=%d\r\n", timerPeriod);
     TIM_SetAutoreload(TIM3, timerPeriod);
     TIM_SetCounter(TIM3, 0);
 }
 
 void Printer::makeRStep()
 {
-    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_R_ZERO)
+    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO)
     {
         if(rTicksCounter>0)
         {
@@ -373,7 +416,7 @@ void Printer::makeRStep()
 
 void Printer::makeFiStep()
 {
-    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO)
+    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO)
     {
         if(fiTicksCounter>0)
         {
@@ -388,4 +431,17 @@ void Printer::makeFiStep()
             }
         }
     }
+}
+
+void Printer::pause(uint16_t pause_ms)
+{
+    NVIC_DisableIRQ(TIM2_IRQn);
+    NVIC_DisableIRQ(TIM3_IRQn);
+    NVIC_DisableIRQ(TIM4_IRQn);
+
+    Delay_Ms(pause_ms);
+
+    NVIC_EnableIRQ(TIM2_IRQn);
+    NVIC_EnableIRQ(TIM3_IRQn);
+    NVIC_EnableIRQ(TIM4_IRQn);
 }

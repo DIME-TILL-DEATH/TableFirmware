@@ -8,6 +8,9 @@
 
 #include "Coordinates.hpp"
 
+#define EXTI_RSENS_LINE EXTI_Line10
+#define EXTI_FISENS_LINE EXTI_Line13
+
 typedef enum
 {
     ERROR = 0,
@@ -43,6 +46,8 @@ public:
 
     void trigFiZero() {fiCenterTrigger = true;};
     void trigRZero() {rCenterTrigger = true;};
+
+    void pause(uint16_t pause_ms);
 private:
     PrinterState m_state;
     std::queue<Coord::DecartPoint> m_printJob;
@@ -60,13 +65,17 @@ private:
     double_t stepTime;
 
     PrinterPin pinRStep;
-    PrinterPin pinRDir;
+    PrinterPin pinRDir; // RESET - R>0
     PrinterPin pinRSensor;
 
     PrinterPin pinFiStep;
-    PrinterPin pinFiDir;
+    PrinterPin pinFiDir;  // SET - clockwise direction
     PrinterPin pinFiSensor;
 
+    bool fiCenterTrigger = false;
+    bool rCenterTrigger = false;
+
+    // HW-------------------------------------------
     void timersInit();
     void pinsInit();
 
@@ -76,13 +85,22 @@ private:
     uint32_t radiansToMotorTicks(double_t radians);
     uint32_t lengthToMotorTicks(double_t length);
 
+    void setStep(double_t dR, double_t dFi, double_t stepTime);
+    void stop();
+    // HW----------------------------------------------------------
+
+    static constexpr double_t errRonRadian = 40/(2*M_PI); // 40mm error in R on 2pi (360) rotation
+                                            // clockwise direction: -R
+
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
 
-    static constexpr double_t speed = 500; //
-    static constexpr double_t stepSize = 0.5; // step size = 1mm
+    static constexpr double_t speed = 1; //
+    static constexpr double_t stepSize = 25; // step size = 1mm
 
     static constexpr uint16_t uTicks = 16;
     static constexpr uint16_t motorRoundTicks = 200;
+
+    static constexpr uint16_t rMoveDiapason = 270;
 
     double_t rTicksCoef;
     static constexpr uint16_t rGearTeethCount = 20;
@@ -91,9 +109,6 @@ private:
     double_t fiTicksCoef;
     static constexpr uint16_t fiGear1TeethCount = 20;
     static constexpr uint16_t fiGear2TeethCount = 160;//202;
-
-    bool fiCenterTrigger = false;
-    bool rCenterTrigger = false;
 };
 
 #endif /* USER_PRINTER_HPP_ */

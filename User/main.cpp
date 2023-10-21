@@ -84,7 +84,8 @@ int main(void)
                             GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(aComm);
                             if(g4Comm)
                             {
-                                Delay_Ms(1000);
+                               // printf("File printed.\r\n");
+//                                Delay_Ms(1000);
                             }
                             break;
                         }
@@ -101,17 +102,19 @@ extern "C"
 {
 void EXTI15_10_IRQHandler(void)
 {
-    if(EXTI_GetITStatus(EXTI_Line13)  == SET)
+    if(EXTI_GetITStatus(EXTI_RSENS_LINE)  == SET)
     {
         printer->trigRZero();
+        printf("Trigger R center\r\n");
     }
 
-    if(EXTI_GetITStatus(EXTI_Line14) == SET)
+    if(EXTI_GetITStatus(EXTI_FISENS_LINE) == SET)
     {
         printer->trigFiZero();
+        printf("Trigger Fi center\r\n");
     }
 
-    EXTI_ClearITPendingBit(EXTI_Line13 | EXTI_Line14);
+    EXTI_ClearITPendingBit(EXTI_FISENS_LINE | EXTI_RSENS_LINE);
 }
 
 void TIM2_IRQHandler(void)
