@@ -55,10 +55,11 @@ private:
     Coord::DecartPoint currentPosition{0, 0};
     Coord::DecartPoint targetPosition{0, 0};
 
+    Coord::PolarPoint currentPolarPosition{0, 0};
+    Coord::PolarPoint targetPolarPosition{0, 0};
+
     uint32_t rTicksCounter{0};
     uint32_t fiTicksCounter{0};
-
-    uint32_t fiSumTicks{0};
 
     double_t stepX;
     double_t stepY;
@@ -89,27 +90,32 @@ private:
     void stop();
     // HW----------------------------------------------------------
 
-    static constexpr double_t errRonRadian = 40/(2*M_PI); // 40mm error in R on 2pi (360) rotation
-                                            // clockwise direction: -R
-
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
 
-//    static constexpr double_t speed = 20000; //
-    static constexpr double_t speed = 5; //
-    static constexpr double_t stepSize = 0.1; //
+    static constexpr double_t printScaleCoef = 0.7;
+
+    static constexpr double_t speed = 7.5;
+    static constexpr double_t stepSize = 1;
+
+    static constexpr uint16_t rMoveDiapason = 270;
 
     static constexpr uint16_t uTicks = 16;
     static constexpr uint16_t motorRoundTicks = 200;
 
-    static constexpr uint16_t rMoveDiapason = 270;
-
-    double_t rTicksCoef;
     static constexpr uint16_t rGearTeethCount = 20;
     static constexpr uint16_t rGearStep = 2;
+    static constexpr double_t rTicksCoef = (double_t)uTicks * (double_t)motorRoundTicks / (double_t)(rGearStep * rGearTeethCount);
 
-    double_t fiTicksCoef;
     static constexpr uint16_t fiGear1TeethCount = 20;
     static constexpr uint16_t fiGear2TeethCount = 160;//202;
+    static constexpr double_t fiTicksCoef = (double_t)uTicks * (((double_t)fiGear2TeethCount/(double_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
+
+    static constexpr double_t errRonRadian = fiGear1TeethCount*rGearStep/(2*M_PI); // 40mm error in R on 2pi (360) rotation
+                                                // clockwise direction: -R
+
+    static constexpr double_t mmOnRTick = 1/rTicksCoef;
+    static constexpr double_t radOnFiTick = 1/fiTicksCoef;
+    static constexpr double_t errRonTick = errRonRadian/fiTicksCoef;
 };
 
 #endif /* USER_PRINTER_HPP_ */

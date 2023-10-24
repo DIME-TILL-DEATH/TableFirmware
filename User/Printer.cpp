@@ -9,11 +9,11 @@ Printer::Printer()
     currentPosition.x = 0;
     currentPosition.y = 0;
 
+    currentPolarPosition.r = 0;
+    currentPolarPosition.fi = 0;
+
     timersInit();
     pinsInit();
-
-    rTicksCoef = (double_t)motorRoundTicks / (double_t)(rGearStep * rGearTeethCount);
-    fiTicksCoef = (((double_t)fiGear2TeethCount/(double_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
 }
 
 void Printer::timersInit()
@@ -191,17 +191,16 @@ void Printer::printRoutine()
             {
                 targetPosition = m_printJob.front();
 
-                targetPosition.x = targetPosition.x * 0.5;
-                targetPosition.y = targetPosition.y * 0.5;
+                targetPosition.x = targetPosition.x * printScaleCoef;
+                targetPosition.y = targetPosition.y * printScaleCoef;
 
                 m_printJob.pop();
-
-                fiSumTicks = 0;
 
                 if(targetPosition.x == currentPosition.x && currentPosition.y == targetPosition.y) return; //skip point
 
                 float_t deltaX = targetPosition.x - currentPosition.x;
                 float_t deltaY = targetPosition.y - currentPosition.y;
+                targetPolarPosition = Coord::convertDecartToPolar(targetPosition);
 
                 float_t lineLength = sqrt(pow((deltaX), 2) + pow((deltaY), 2));
                 float_t sizeCoef = lineLength/stepSize;
@@ -210,8 +209,10 @@ void Printer::printRoutine()
 
                 stepTime = stepSize / speed;
 
-                printf("current pos:(%lf, %lf), target pos(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
+                printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
                 printf("length: %lf, coef: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, sizeCoef, stepX, stepY);
+                printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
+                printf("\r\n");
 
                 m_state = PrinterState::SET_STEP;
             }
@@ -233,7 +234,6 @@ void Printer::printRoutine()
             }
             else
             {
-                GPIO_WriteBit(GPIOB, GPIO_Pin_6, Bit_SET);
                 Coord::DecartPoint stepPosition{currentPosition.x + stepX, currentPosition.y +stepY};
 
                 Coord::PolarPoint curPolarPoint = Coord::convertDecartToPolar(currentPosition);
@@ -247,8 +247,9 @@ void Printer::printRoutine()
                 {
                     if(Coord::isLinesCross(currentPosition, stepPosition, {0, 0}, {1000, 0}))
                     {
-                        printf("!!!!!fi correction! deltaFi before: %lf => \r\n", deltaFi * 360 / (M_PI * 2));
+                        printf("!!!!!fi correction! dFi before: %lf => ", deltaFi * 360 / (M_PI * 2));
                         deltaFi = (-1) * copysign(2 * M_PI - fabs(deltaFi), deltaFi);
+                        printf("dFi after: %lf\r\n", deltaFi);
                     }
                 }
 
@@ -257,13 +258,16 @@ void Printer::printRoutine()
                 currentPosition.x += stepX;
                 currentPosition.y += stepY;
 
-//                printf("==curXY(%f, %f)/curRFi(%f, %f))--r tcks=%d, fi tck=%d\r\n", currentPosition.x, currentPosition.y,
-//                                                                                        curPolarPoint.r, curPolarPoint.fi * 360 / (M_PI * 2),
-//                                                                                        rTicksCounter, fiTicksCounter);
-
+                if(currentPolarPosition.fi < 0)
+                {
+                    currentPolarPosition.fi += 2 * M_PI;
+                }
+                if(currentPolarPosition.fi > 2 * M_PI)
+                {
+                    currentPolarPosition.fi -= 2 * M_PI;
+                }
 
                 m_state = PrinterState::PRINTING;
-                GPIO_WriteBit(GPIOB, GPIO_Pin_6, Bit_RESET);
             }
             break;
         }
@@ -274,6 +278,16 @@ void Printer::printRoutine()
             {
                 m_state = PrinterState::SET_STEP;
             }
+
+            if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
+            {
+                printf("Bull's eye!\r\n");
+                printf("\r\n");
+                rTicksCounter = 0;
+                fiTicksCounter = 0;
+                currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
+                m_state = PrinterState::SET_POINT;
+            }
             break;
         }
 
@@ -283,6 +297,8 @@ void Printer::printRoutine()
             {
                 setStep(-rMoveDiapason * 1.2, 0, 15); // 20% margin
                 m_state = PrinterState::SEARCH_R_ZERO;
+
+                printf("Fi zeroing\r\n");
             }
             break;
         }
@@ -293,6 +309,11 @@ void Printer::printRoutine()
             {
                 stop();
                 NVIC_DisableIRQ(EXTI15_10_IRQn);
+
+                currentPolarPosition.r = 0;
+                currentPolarPosition.fi = 0;
+
+                printf("R zeroing\r\n");
 
                 m_state = PrinterState::IDLE;
             }
@@ -349,8 +370,6 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
 
     fiTicksCounter = radiansToMotorTicks(abs(dFi));
 
-//    printf("rT:%d, fiT:%d, corrT:%d\r\n", rTicksCounter, fiTicksCounter, correctionTicks);
-
     float_t rPeriod = stepTimeInSec/rTicksCounter;
     float_t fiPeriod = stepTimeInSec/fiTicksCounter;
 
@@ -358,25 +377,26 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
     setFiStepPeriod(fiPeriod);
 }
 
-void Printer::stop()
-{
-    rTicksCounter = 0;
-    fiTicksCounter = 0;
-}
-
 uint32_t Printer::radiansToMotorTicks(double_t radians)
 {
-    return round(fiTicksCoef * radians * uTicks);
+    return round(fiTicksCoef * radians); // * uTicks);
 }
 
 uint32_t Printer::lengthToMotorTicks(double_t length)
 {
-    return round(rTicksCoef * length * uTicks);
+    return round(rTicksCoef * length); // * uTicks);
 }
 
 void Printer::setRStepPeriod(double_t timeInSec)
 {
     uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
+
+    uint16_t minPeriod = 100;
+    if(timerPeriod < minPeriod)
+    {
+        printf("TIM2(R) correct autoreload counted: %d, settled: %d\r\n", timerPeriod, minPeriod);
+        timerPeriod = minPeriod;
+    }
 
 //    printf("TIM2 autoreload=%d\r\n", timerPeriod);
     TIM_SetAutoreload(TIM2, timerPeriod);
@@ -387,11 +407,11 @@ void Printer::setFiStepPeriod(double_t timeInSec)
 {
     uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
 
-    uint16_t minPeriod = 100;
+    uint16_t minPeriod = 350;
 
     if(timerPeriod < minPeriod)
     {
-        printf("TIM3 correct autoreload counted: %d, settled: %d\r\n", timerPeriod, minPeriod);
+        printf("TIM3(Fi) correct autoreload counted: %d, settled: %d\r\n", timerPeriod, minPeriod);
         timerPeriod = minPeriod;
     }
 //    printf("TIM3 autoreload=%d\r\n", timerPeriod);
@@ -408,6 +428,15 @@ void Printer::makeRStep()
             if(GPIO_ReadOutputDataBit(pinRStep.port, pinRStep.pin) == Bit_RESET)
             {
                 GPIO_WriteBit(pinRStep.port, pinRStep.pin, Bit_SET);
+
+                if(GPIO_ReadOutputDataBit(pinRDir.port, pinRDir.pin) == Bit_RESET)
+                {
+                    currentPolarPosition.r += mmOnRTick;
+                }
+                else
+                {
+                    currentPolarPosition.r -= mmOnRTick;
+                }
             }
             else
             {
@@ -427,6 +456,17 @@ void Printer::makeFiStep()
             if(GPIO_ReadOutputDataBit(pinFiStep.port, pinFiStep.pin) == Bit_RESET)
             {
                 GPIO_WriteBit(pinFiStep.port, pinFiStep.pin, Bit_SET);
+
+                if(GPIO_ReadOutputDataBit(pinFiDir.port, pinFiDir.pin) == Bit_RESET)
+                {
+                    currentPolarPosition.fi += radOnFiTick;
+                    currentPolarPosition.r -= errRonTick;
+                }
+                else
+                {
+                    currentPolarPosition.fi -= radOnFiTick;
+                    currentPolarPosition.r += errRonTick;
+                }
             }
             else
             {
@@ -448,4 +488,10 @@ void Printer::pause(uint16_t pause_ms)
     NVIC_EnableIRQ(TIM2_IRQn);
     NVIC_EnableIRQ(TIM3_IRQn);
     NVIC_EnableIRQ(TIM4_IRQn);
+}
+
+void Printer::stop()
+{
+    rTicksCounter = 0;
+    fiTicksCounter = 0;
 }

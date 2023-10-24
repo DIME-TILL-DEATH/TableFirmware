@@ -37,6 +37,8 @@ int main(void)
 	printf( "ChipID:%08x\r\n", DBGMCU_GetCHIPID());
 	printf("Paint table firmware\r\n");
 
+	Delay_Ms(500);
+
 	fileManager = new FileManager();
 	printer = new Printer();
 	FM_RESULT result;
