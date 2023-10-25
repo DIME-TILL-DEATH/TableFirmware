@@ -19,7 +19,8 @@ typedef enum
     PRINTING,
     SET_STEP,
     SEARCH_R_ZERO,
-    SEARCH_FI_ZERO
+    SEARCH_FI_ZERO,
+    CORRECTING_CENTER
 }PrinterState;
 
 typedef struct
@@ -80,8 +81,7 @@ private:
     void timersInit();
     void pinsInit();
 
-    void setRStepPeriod(double_t timeInSec);
-    void setFiStepPeriod(double_t timeInSec);
+    void setTIMPeriods(double_t rStepTime, double_t fiStepTime);
 
     uint32_t radiansToMotorTicks(double_t radians);
     uint32_t lengthToMotorTicks(double_t length);
@@ -91,6 +91,8 @@ private:
     // HW----------------------------------------------------------
 
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
+    static constexpr uint16_t minRPeriod = 100;
+    static constexpr uint16_t minFiPeriod = 250;
 
     static constexpr double_t printScaleCoef = 0.7;
 

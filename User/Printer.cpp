@@ -281,8 +281,8 @@ void Printer::printRoutine()
 
             if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
             {
-                printf("Bull's eye!\r\n");
-                printf("\r\n");
+//                printf("Bull's eye!\r\n");
+//                printf("\r\n");
                 rTicksCounter = 0;
                 fiTicksCounter = 0;
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
@@ -310,12 +310,24 @@ void Printer::printRoutine()
                 stop();
                 NVIC_DisableIRQ(EXTI15_10_IRQn);
 
-                currentPolarPosition.r = 0;
-                currentPolarPosition.fi = 0;
+//                currentPolarPosition.r = 0;
+//                currentPolarPosition.fi = 0;
 
                 printf("R zeroing\r\n");
 
+                rTicksCounter = lengthToMotorTicks(7.5); //setStep()?
+                m_state = PrinterState::CORRECTING_CENTER;
+            }
+            break;
+        }
+
+        case PrinterState::CORRECTING_CENTER:
+        {
+            if(rTicksCounter==0)
+            {
                 m_state = PrinterState::IDLE;
+                currentPolarPosition.r = 0;
+                currentPolarPosition.fi = 0;
             }
             break;
         }
@@ -373,8 +385,7 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
     float_t rPeriod = stepTimeInSec/rTicksCounter;
     float_t fiPeriod = stepTimeInSec/fiTicksCounter;
 
-    setRStepPeriod(rPeriod);
-    setFiStepPeriod(fiPeriod);
+    setTIMPeriods(rPeriod, fiPeriod);
 }
 
 uint32_t Printer::radiansToMotorTicks(double_t radians)
@@ -387,41 +398,44 @@ uint32_t Printer::lengthToMotorTicks(double_t length)
     return round(rTicksCoef * length); // * uTicks);
 }
 
-void Printer::setRStepPeriod(double_t timeInSec)
+void Printer::setTIMPeriods(double_t rStepTime, double_t fiStepTime)
 {
-    uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
+    uint32_t timerRPeriod = round(rStepTime * timerPrescaler / 2);
+    uint32_t timerFiPeriod = round(fiStepTime * timerPrescaler / 2);
 
-    uint16_t minPeriod = 100;
-    if(timerPeriod < minPeriod)
+    if(timerRPeriod < minRPeriod)
     {
-        printf("TIM2(R) correct autoreload counted: %d, settled: %d\r\n", timerPeriod, minPeriod);
-        timerPeriod = minPeriod;
+        double_t fiCorretionCoef;
+        printf("TIM2(R) corrected: %d => %d, ", timerRPeriod, minRPeriod);
+        fiCorretionCoef = (double_t)minRPeriod / (double_t)timerRPeriod;
+        timerRPeriod = minRPeriod;
+        printf("Fi corretion coef: %lf, ", fiCorretionCoef);
+        timerFiPeriod *=  fiCorretionCoef;
+        printf("Fi result: %d\r\n", timerFiPeriod);
     }
 
-//    printf("TIM2 autoreload=%d\r\n", timerPeriod);
-    TIM_SetAutoreload(TIM2, timerPeriod);
+    if(timerFiPeriod < minFiPeriod)
+    {
+        double_t rCorretionCoef;
+        printf("TIM3(R) corrected: %d => %d, ", timerFiPeriod, minFiPeriod);
+        rCorretionCoef = (double_t)minFiPeriod / (double_t)timerFiPeriod;
+        timerFiPeriod = minFiPeriod;
+        printf("R corretion coef: %lf, ", rCorretionCoef);
+        timerRPeriod *=  rCorretionCoef;
+        printf("R result: %d\r\n", timerRPeriod);
+    }
+
+    TIM_SetAutoreload(TIM2, timerRPeriod);
     TIM_SetCounter(TIM2, 0);
-}
-
-void Printer::setFiStepPeriod(double_t timeInSec)
-{
-    uint32_t timerPeriod = round(timeInSec * timerPrescaler / 2);
-
-    uint16_t minPeriod = 350;
-
-    if(timerPeriod < minPeriod)
-    {
-        printf("TIM3(Fi) correct autoreload counted: %d, settled: %d\r\n", timerPeriod, minPeriod);
-        timerPeriod = minPeriod;
-    }
-//    printf("TIM3 autoreload=%d\r\n", timerPeriod);
-    TIM_SetAutoreload(TIM3, timerPeriod);
+    TIM_SetAutoreload(TIM3, timerFiPeriod);
     TIM_SetCounter(TIM3, 0);
+
+    //    printf("TIM2: %d, TIM3: %d\r\n", timerRPeriod, timerFiPeriod);
 }
 
 void Printer::makeRStep()
 {
-    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO)
+    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || m_state == PrinterState::CORRECTING_CENTER)
     {
         if(rTicksCounter>0)
         {
@@ -444,12 +458,16 @@ void Printer::makeRStep()
                 rTicksCounter--;
             }
         }
+        else
+        {
+            printRoutine();
+        }
     }
 }
 
 void Printer::makeFiStep()
 {
-    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO)
+    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || m_state == PrinterState::CORRECTING_CENTER)
     {
         if(fiTicksCounter>0)
         {
@@ -473,6 +491,10 @@ void Printer::makeFiStep()
                 GPIO_WriteBit(pinFiStep.port, pinFiStep.pin, Bit_RESET);
                 fiTicksCounter--;
             }
+        }
+        else
+        {
+            printRoutine();
         }
     }
 }
