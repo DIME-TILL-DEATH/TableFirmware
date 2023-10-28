@@ -153,6 +153,7 @@ vector<GCode::GAbstractComm*> FileManager::readNextBlock()
     TCHAR* result;
     vector<GCode::GAbstractComm*> answer;
 
+//    printf("Reading next comm block\r\n\r\n");
     do
     {
         result = f_gets(readBuf, 512, &currentPrintFile);

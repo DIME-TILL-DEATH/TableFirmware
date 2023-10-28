@@ -57,9 +57,12 @@ int main(void)
 	    {
             std::vector<GCode::GAbstractComm*> nextCommBlock;
             do{
-                while(printer->state() != PrinterState::IDLE) {}
-
                 nextCommBlock = fileManager->readNextBlock();
+
+//                while(!printer->state() != PrinterState::IDLE) {}
+                while(!printer->isPrinterFree()) {}
+
+//                nextCommBlock = fileManager->readNextBlock();
 
                 for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
                 {
@@ -93,7 +96,6 @@ int main(void)
                         }
                     }
                     delete aComm;
-                    Delay_Ms(1000);
                 }
             }while(nextCommBlock.size()>0);
 	    }

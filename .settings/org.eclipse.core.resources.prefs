@@ -39,4 +39,6 @@ encoding//User/MCUConfig/system_ch32v30x.c=GBK
 encoding//User/MCUConfig/system_ch32v30x.h=GBK
 encoding//User/Printer.cpp=GBK
 encoding//User/Printer.hpp=GBK
+encoding//User/PrinterHardware.cpp=GBK
+encoding//User/PrinterHardware.hpp=GBK
 encoding//User/main.cpp=GBK

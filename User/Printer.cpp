@@ -43,7 +43,8 @@ void Printer::timersInit()
     NVIC_EnableIRQ(TIM2_IRQn);
     NVIC_EnableIRQ(TIM3_IRQn);
 
-    TIM_TimeBaseStructure.TIM_Prescaler = TIM2->PSC * 5;
+    TIM_TimeBaseStructure.TIM_Prescaler = TIM2->PSC;
+//    TIM_TimeBaseStructure.TIM_Period = 50;
     TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
     TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
@@ -162,10 +163,10 @@ bool Printer::findCenter()
     return true;
 }
 
-PrinterState Printer::state()
-{
-    return m_state;
-}
+//PrinterState Printer::state()
+//{
+//    return m_state;
+//}
 
 void Printer::pushPrintPoint(const Coord::DecartPoint& printPoint)
 {
@@ -203,14 +204,14 @@ void Printer::printRoutine()
                 targetPolarPosition = Coord::convertDecartToPolar(targetPosition);
 
                 float_t lineLength = sqrt(pow((deltaX), 2) + pow((deltaY), 2));
-                float_t sizeCoef = lineLength/stepSize;
-                stepX = deltaX / sizeCoef;
-                stepY = deltaY / sizeCoef;
+                float_t steps = lineLength/stepSize;
 
-                stepTime = stepSize / speed;
+                stepX = deltaX / steps;
+                stepY = deltaY / steps;
+                stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2))) / speed;
 
                 printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
-                printf("length: %lf, coef: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, sizeCoef, stepX, stepY);
+                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
                 printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
                 printf("\r\n");
 
@@ -247,7 +248,7 @@ void Printer::printRoutine()
                 {
                     if(Coord::isLinesCross(currentPosition, stepPosition, {0, 0}, {1000, 0}))
                     {
-                        printf("!!!!!fi correction! dFi before: %lf => ", deltaFi * 360 / (M_PI * 2));
+                        printf("=>fi correction! dFi before: %lf => ", deltaFi * 360 / (M_PI * 2));
                         deltaFi = (-1) * copysign(2 * M_PI - fabs(deltaFi), deltaFi);
                         printf("dFi after: %lf\r\n", deltaFi);
                     }
@@ -258,6 +259,7 @@ void Printer::printRoutine()
                 currentPosition.x += stepX;
                 currentPosition.y += stepY;
 
+                // Avoid overflow on circular printing in one direction
                 if(currentPolarPosition.fi < 0)
                 {
                     currentPolarPosition.fi += 2 * M_PI;
@@ -309,9 +311,6 @@ void Printer::printRoutine()
             {
                 stop();
                 NVIC_DisableIRQ(EXTI15_10_IRQn);
-
-//                currentPolarPosition.r = 0;
-//                currentPolarPosition.fi = 0;
 
                 printf("R zeroing\r\n");
 
@@ -406,7 +405,7 @@ void Printer::setTIMPeriods(double_t rStepTime, double_t fiStepTime)
     if(timerRPeriod < minRPeriod)
     {
         double_t fiCorretionCoef;
-        printf("TIM2(R) corrected: %d => %d, ", timerRPeriod, minRPeriod);
+        printf("=>TIM2(R) corrected: %d => %d, ", timerRPeriod, minRPeriod);
         fiCorretionCoef = (double_t)minRPeriod / (double_t)timerRPeriod;
         timerRPeriod = minRPeriod;
         printf("Fi corretion coef: %lf, ", fiCorretionCoef);
@@ -417,7 +416,7 @@ void Printer::setTIMPeriods(double_t rStepTime, double_t fiStepTime)
     if(timerFiPeriod < minFiPeriod)
     {
         double_t rCorretionCoef;
-        printf("TIM3(R) corrected: %d => %d, ", timerFiPeriod, minFiPeriod);
+        printf("=>TIM3(R) corrected: %d => %d, ", timerFiPeriod, minFiPeriod);
         rCorretionCoef = (double_t)minFiPeriod / (double_t)timerFiPeriod;
         timerFiPeriod = minFiPeriod;
         printf("R corretion coef: %lf, ", rCorretionCoef);
@@ -458,7 +457,8 @@ void Printer::makeRStep()
                 rTicksCounter--;
             }
         }
-        else
+
+        if(rTicksCounter==0)
         {
             printRoutine();
         }
@@ -492,7 +492,8 @@ void Printer::makeFiStep()
                 fiTicksCounter--;
             }
         }
-        else
+
+        if(fiTicksCounter==0)
         {
             printRoutine();
         }
@@ -516,4 +517,9 @@ void Printer::stop()
 {
     rTicksCounter = 0;
     fiTicksCounter = 0;
+}
+
+bool Printer::isPrinterFree()
+{
+    return m_state == PrinterState::IDLE;
 }

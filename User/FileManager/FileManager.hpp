@@ -31,7 +31,7 @@ public:
     FM_RESULT connectSDCard();
     FM_RESULT loadNextPrint();
 
-    static constexpr uint8_t blockSize{16};
+    static constexpr uint8_t blockSize = 16;
 
     std::vector<GCode::GAbstractComm*> readNextBlock();
 private:

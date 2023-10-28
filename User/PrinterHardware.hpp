@@ -1,5 +1,8 @@
-#ifndef USER_PRINTER_HPP_
-#define USER_PRINTER_HPP_
+#ifndef USER_PRINTERHARDWARE_HPP_
+#define USER_PRINTERHARDWARE_HPP_
+
+#define EXTI_RSENS_LINE EXTI_Line10
+#define EXTI_FISENS_LINE EXTI_Line13
 
 #include <vector>
 #include <queue>
@@ -8,44 +11,35 @@
 
 #include "Coordinates.hpp"
 
-#include "PrinterHardware.hpp"
 
-class Printer
+typedef struct
+{
+    GPIO_TypeDef* port;
+    uint16_t pin;
+}PrinterPin;
+
+class PrinterHardware
 {
 public:
-    Printer();
+    PrinterHardware();
 
-//    PrinterState state();
-
-    bool findCenter();
-
-    void pushPrintPoint(const Coord::DecartPoint& printPoint);
-    void printRoutine();
-
-    void makeRStep();
-    void makeFiStep();
-
-    void trigFiZero() {fiCenterTrigger = true;};
-    void trigRZero() {rCenterTrigger = true;};
-
-    void pause(uint16_t pause_ms);
-
-    bool isPrinterFree();
+    void pause();
+    void resume();
+    void stop();
 private:
     typedef enum
     {
         ERROR = 0,
         IDLE,
-        SET_POINT,
         PRINTING,
+        PAUSE,
         SET_STEP,
         SEARCH_R_ZERO,
         SEARCH_FI_ZERO,
         CORRECTING_CENTER
-    }PrinterState;
+    }PrinterHWState;
 
-    PrinterState m_state;
-    std::queue<Coord::DecartPoint> m_printJob;
+    PrinterHWState m_state, m_prevState;
 
     Coord::DecartPoint currentPosition{0, 0};
     Coord::DecartPoint targetPosition{0, 0};
@@ -71,19 +65,17 @@ private:
     bool fiCenterTrigger = false;
     bool rCenterTrigger = false;
 
-    // HW-------------------------------------------
     void timersInit();
     void pinsInit();
 
-    void setTIMPeriods(double_t rStepTime, double_t fiStepTime);
+//    void setTIMPeriods(double_t rStepTime, double_t fiStepTime);
+//
+//    uint32_t radiansToMotorTicks(double_t radians);
+//    uint32_t lengthToMotorTicks(double_t length);
+//
+//    void setStep(double_t dR, double_t dFi, double_t stepTime);
 
-    uint32_t radiansToMotorTicks(double_t radians);
-    uint32_t lengthToMotorTicks(double_t length);
-
-    void setStep(double_t dR, double_t dFi, double_t stepTime);
-    void stop();
-    // HW----------------------------------------------------------
-
+    //===================CONSTANTS==========================
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
     static constexpr uint16_t minRPeriod = 100;
     static constexpr uint16_t minFiPeriod = 250;
@@ -114,4 +106,5 @@ private:
     static constexpr double_t errRonTick = errRonRadian/fiTicksCoef;
 };
 
-#endif /* USER_PRINTER_HPP_ */
+
+#endif /* USER_PRINTERHARDWARE_HPP_ */
