@@ -8,7 +8,26 @@
 
 #include "Coordinates.hpp"
 
-#include "PrinterHardware.hpp"
+#define EXTI_RSENS_LINE EXTI_Line10
+#define EXTI_FISENS_LINE EXTI_Line13
+
+typedef enum
+{
+    ERROR = 0,
+    IDLE,
+    SET_POINT,
+    PRINTING,
+    SET_STEP,
+    SEARCH_R_ZERO,
+    SEARCH_FI_ZERO,
+    CORRECTING_CENTER
+}PrinterState;
+
+typedef struct
+{
+    GPIO_TypeDef* port;
+    uint16_t pin;
+}PrinterPin;
 
 class Printer
 {
@@ -56,6 +75,8 @@ private:
     uint32_t rTicksCounter{0};
     uint32_t fiTicksCounter{0};
 
+    uint32_t pointNum{0};
+
     double_t stepX;
     double_t stepY;
     double_t stepTime;
@@ -90,7 +111,7 @@ private:
 
     static constexpr double_t printScaleCoef = 0.7;
 
-    static constexpr double_t speed = 7.5;
+    static constexpr double_t speed = 15;//7.5;
     static constexpr double_t stepSize = 1;
 
     static constexpr uint16_t rMoveDiapason = 270;

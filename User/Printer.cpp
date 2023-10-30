@@ -44,7 +44,6 @@ void Printer::timersInit()
     NVIC_EnableIRQ(TIM3_IRQn);
 
     TIM_TimeBaseStructure.TIM_Prescaler = TIM2->PSC;
-//    TIM_TimeBaseStructure.TIM_Period = 50;
     TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
     TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
@@ -132,6 +131,8 @@ bool Printer::findCenter()
     currentPosition.x = 0;
     currentPosition.y = 0;
 
+    pointNum = 1;
+
     fiCenterTrigger = false;
     rCenterTrigger = false;
 
@@ -163,11 +164,6 @@ bool Printer::findCenter()
     return true;
 }
 
-//PrinterState Printer::state()
-//{
-//    return m_state;
-//}
-
 void Printer::pushPrintPoint(const Coord::DecartPoint& printPoint)
 {
         m_printJob.push(printPoint);
@@ -188,6 +184,7 @@ void Printer::printRoutine()
 
         case PrinterState::SET_POINT:
         {
+
             if(m_printJob.size()>0)
             {
                 targetPosition = m_printJob.front();
@@ -205,15 +202,20 @@ void Printer::printRoutine()
 
                 float_t lineLength = sqrt(pow((deltaX), 2) + pow((deltaY), 2));
                 float_t steps = lineLength/stepSize;
-
+//                float_t steps = fabs(lineLength/stepSize);
                 stepX = deltaX / steps;
                 stepY = deltaY / steps;
+
                 stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2))) / speed;
 
+                printf("Point num: %d\r\n", pointNum);
                 printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
-                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
+//                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
                 printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
+                printf("Points left in block: %d\r\n", m_printJob.size());
                 printf("\r\n");
+
+                pointNum++;
 
                 m_state = PrinterState::SET_STEP;
             }

@@ -57,12 +57,16 @@ int main(void)
 	    {
             std::vector<GCode::GAbstractComm*> nextCommBlock;
             do{
-                nextCommBlock = fileManager->readNextBlock();
-
-//                while(!printer->state() != PrinterState::IDLE) {}
                 while(!printer->isPrinterFree()) {}
 
-//                nextCommBlock = fileManager->readNextBlock();
+                // Thread-safe
+                NVIC_DisableIRQ(TIM2_IRQn);
+                NVIC_DisableIRQ(TIM3_IRQn);
+                NVIC_DisableIRQ(TIM4_IRQn);
+
+                nextCommBlock = fileManager->readNextBlock();
+
+                printf("\r\nNext comm block size: %d\r\n\r\n", nextCommBlock.size());
 
                 for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
                 {
@@ -73,6 +77,11 @@ int main(void)
                         case GCode::GCommType::M51:
                         {
                             printer->findCenter();
+                            GCode::M51Comm* m51Comm = static_cast<GCode::M51Comm*>(aComm);
+                            if(m51Comm)
+                            {
+//                                delete m51Comm;
+                            }
                             break;
                         }
                         case GCode::GCommType::G1:
@@ -81,6 +90,7 @@ int main(void)
                             if(g1Comm)
                             {
                                 printer->pushPrintPoint(g1Comm->decartCoordinates());
+//                                delete g1Comm;
                             }
                             break;
                         }
@@ -91,13 +101,20 @@ int main(void)
                             {
                                // printf("File printed.\r\n");
 //                                Delay_Ms(1000);
+//                                delete g4Comm;
                             }
                             break;
                         }
                     }
                     delete aComm;
                 }
+
+                NVIC_EnableIRQ(TIM2_IRQn);
+                NVIC_EnableIRQ(TIM3_IRQn);
+                NVIC_EnableIRQ(TIM4_IRQn);
+
             }while(nextCommBlock.size()>0);
+//            printf("Cycle out\r\n");
 	    }
 	}
 }
