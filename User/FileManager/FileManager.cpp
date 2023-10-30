@@ -146,15 +146,13 @@ FM_RESULT FileManager::loadNextPrint()
         return FM_ERROR;
     }
 
-    printf("File %s succesfully opened. Printing...\r\n", currentFileName.c_str());
+    printf("File %s succesfully opened. Printing...\r\n\r\n", currentFileName.c_str());
 
     return FM_OK;
 }
 
 vector<GCode::GAbstractComm*> FileManager::readNextBlock()
 {
-//    printf("Reading next comm block\r\n\r\n");
-
     TCHAR readBuf[512];
     TCHAR* result;
     vector<GCode::GAbstractComm*> answer;

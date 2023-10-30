@@ -116,11 +116,9 @@ void Printer::pinsInit()
     EXTI_Init(&EXTI_InitStructure);
 }
 
-bool Printer::findCenter()
+void Printer::findCenter()
 {
-    NVIC_DisableIRQ(TIM2_IRQn);
-    NVIC_DisableIRQ(TIM3_IRQn);
-    NVIC_DisableIRQ(TIM4_IRQn);
+    pauseThread();
 
     TIM_SetAutoreload(TIM2, 500);
     TIM_SetCounter(TIM2, 0);
@@ -158,10 +156,7 @@ bool Printer::findCenter()
     EXTI_ClearITPendingBit(EXTI_FISENS_LINE | EXTI_RSENS_LINE);
     NVIC_EnableIRQ(EXTI15_10_IRQn);
 
-    NVIC_EnableIRQ(TIM2_IRQn);
-    NVIC_EnableIRQ(TIM3_IRQn);
-    NVIC_EnableIRQ(TIM4_IRQn);
-    return true;
+    resumeThread();
 }
 
 void Printer::pushPrintPoint(const Coord::DecartPoint& printPoint)
@@ -202,18 +197,18 @@ void Printer::printRoutine()
 
                 float_t lineLength = sqrt(pow((deltaX), 2) + pow((deltaY), 2));
                 float_t steps = lineLength/stepSize;
-//                float_t steps = fabs(lineLength/stepSize);
                 stepX = deltaX / steps;
                 stepY = deltaY / steps;
 
                 stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2))) / speed;
 
-                printf("Point num: %d\r\n", pointNum);
-                printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
+                // INFO block==========
+//                printf("Point num: %d\r\n", pointNum);
+//                printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
 //                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
-                printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
-                printf("Points left in block: %d\r\n", m_printJob.size());
-                printf("\r\n");
+//                printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
+//                printf("\r\n");
+                //=================================
 
                 pointNum++;
 
@@ -250,9 +245,7 @@ void Printer::printRoutine()
                 {
                     if(Coord::isLinesCross(currentPosition, stepPosition, {0, 0}, {1000, 0}))
                     {
-                        printf("=>fi correction! dFi before: %lf => ", deltaFi * 360 / (M_PI * 2));
                         deltaFi = (-1) * copysign(2 * M_PI - fabs(deltaFi), deltaFi);
-                        printf("dFi after: %lf\r\n", deltaFi);
                     }
                 }
 
@@ -285,8 +278,6 @@ void Printer::printRoutine()
 
             if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
             {
-//                printf("Bull's eye!\r\n");
-//                printf("\r\n");
                 rTicksCounter = 0;
                 fiTicksCounter = 0;
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
@@ -391,12 +382,12 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
 
 uint32_t Printer::radiansToMotorTicks(double_t radians)
 {
-    return round(fiTicksCoef * radians); // * uTicks);
+    return round(fiTicksCoef * radians);
 }
 
 uint32_t Printer::lengthToMotorTicks(double_t length)
 {
-    return round(rTicksCoef * length); // * uTicks);
+    return round(rTicksCoef * length);
 }
 
 void Printer::setTIMPeriods(double_t rStepTime, double_t fiStepTime)
@@ -407,31 +398,23 @@ void Printer::setTIMPeriods(double_t rStepTime, double_t fiStepTime)
     if(timerRPeriod < minRPeriod)
     {
         double_t fiCorretionCoef;
-        printf("=>TIM2(R) corrected: %d => %d, ", timerRPeriod, minRPeriod);
         fiCorretionCoef = (double_t)minRPeriod / (double_t)timerRPeriod;
         timerRPeriod = minRPeriod;
-        printf("Fi corretion coef: %lf, ", fiCorretionCoef);
         timerFiPeriod *=  fiCorretionCoef;
-        printf("Fi result: %d\r\n", timerFiPeriod);
     }
 
     if(timerFiPeriod < minFiPeriod)
     {
         double_t rCorretionCoef;
-        printf("=>TIM3(R) corrected: %d => %d, ", timerFiPeriod, minFiPeriod);
         rCorretionCoef = (double_t)minFiPeriod / (double_t)timerFiPeriod;
         timerFiPeriod = minFiPeriod;
-        printf("R corretion coef: %lf, ", rCorretionCoef);
         timerRPeriod *=  rCorretionCoef;
-        printf("R result: %d\r\n", timerRPeriod);
     }
 
     TIM_SetAutoreload(TIM2, timerRPeriod);
     TIM_SetCounter(TIM2, 0);
     TIM_SetAutoreload(TIM3, timerFiPeriod);
     TIM_SetCounter(TIM3, 0);
-
-    //    printf("TIM2: %d, TIM3: %d\r\n", timerRPeriod, timerFiPeriod);
 }
 
 void Printer::makeRStep()
@@ -502,14 +485,15 @@ void Printer::makeFiStep()
     }
 }
 
-void Printer::pause(uint16_t pause_ms)
+void Printer::pauseThread()
 {
     NVIC_DisableIRQ(TIM2_IRQn);
     NVIC_DisableIRQ(TIM3_IRQn);
     NVIC_DisableIRQ(TIM4_IRQn);
+}
 
-    Delay_Ms(pause_ms);
-
+void Printer::resumeThread()
+{
     NVIC_EnableIRQ(TIM2_IRQn);
     NVIC_EnableIRQ(TIM3_IRQn);
     NVIC_EnableIRQ(TIM4_IRQn);

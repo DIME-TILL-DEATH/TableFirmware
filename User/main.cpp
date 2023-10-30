@@ -43,7 +43,6 @@ int main(void)
 	printer = new Printer();
 	FM_RESULT result;
 
-	// TODO: SD-card disconnect and reconnect interrupt!
 	do
     {
         result = fileManager->connectSDCard();
@@ -60,13 +59,9 @@ int main(void)
                 while(!printer->isPrinterFree()) {}
 
                 // Thread-safe
-                NVIC_DisableIRQ(TIM2_IRQn);
-                NVIC_DisableIRQ(TIM3_IRQn);
-                NVIC_DisableIRQ(TIM4_IRQn);
+                printer->pauseThread();
 
                 nextCommBlock = fileManager->readNextBlock();
-
-                printf("\r\nNext comm block size: %d\r\n\r\n", nextCommBlock.size());
 
                 for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
                 {
@@ -80,7 +75,6 @@ int main(void)
                             GCode::M51Comm* m51Comm = static_cast<GCode::M51Comm*>(aComm);
                             if(m51Comm)
                             {
-//                                delete m51Comm;
                             }
                             break;
                         }
@@ -90,7 +84,6 @@ int main(void)
                             if(g1Comm)
                             {
                                 printer->pushPrintPoint(g1Comm->decartCoordinates());
-//                                delete g1Comm;
                             }
                             break;
                         }
@@ -99,22 +92,15 @@ int main(void)
                             GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(aComm);
                             if(g4Comm)
                             {
-                               // printf("File printed.\r\n");
-//                                Delay_Ms(1000);
-//                                delete g4Comm;
+
                             }
                             break;
                         }
                     }
                     delete aComm;
                 }
-
-                NVIC_EnableIRQ(TIM2_IRQn);
-                NVIC_EnableIRQ(TIM3_IRQn);
-                NVIC_EnableIRQ(TIM4_IRQn);
-
+                printer->resumeThread();
             }while(nextCommBlock.size()>0);
-//            printf("Cycle out\r\n");
 	    }
 	}
 }

@@ -34,9 +34,7 @@ class Printer
 public:
     Printer();
 
-//    PrinterState state();
-
-    bool findCenter();
+    void findCenter();
 
     void pushPrintPoint(const Coord::DecartPoint& printPoint);
     void printRoutine();
@@ -47,7 +45,8 @@ public:
     void trigFiZero() {fiCenterTrigger = true;};
     void trigRZero() {rCenterTrigger = true;};
 
-    void pause(uint16_t pause_ms);
+    void pauseThread();
+    void resumeThread();
 
     bool isPrinterFree();
 private:
