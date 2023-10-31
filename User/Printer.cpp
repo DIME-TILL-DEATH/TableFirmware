@@ -137,8 +137,6 @@ void Printer::findCenter()
     GPIO_WriteBit(pinFiDir.port, pinFiDir.pin, Bit_SET);
     GPIO_WriteBit(pinRDir.port, pinRDir.pin, Bit_RESET);
 
-    m_state = PrinterState::SEARCH_FI_ZERO;
-
     if(GPIO_ReadInputDataBit(pinFiSensor.port, pinFiSensor.pin) == Bit_SET)
     {
         fiCenterTrigger = true;
@@ -156,12 +154,14 @@ void Printer::findCenter()
     EXTI_ClearITPendingBit(EXTI_FISENS_LINE | EXTI_RSENS_LINE);
     NVIC_EnableIRQ(EXTI15_10_IRQn);
 
+    m_state = PrinterState::SEARCH_FI_ZERO;
+
     resumeThread();
 }
 
-void Printer::pushPrintPoint(const Coord::DecartPoint& printPoint)
+void Printer::pushPrintCommand(GCode::GAbstractComm* command)
 {
-        m_printJob.push(printPoint);
+        m_printJob.push(command);
 }
 
 void Printer::printRoutine()
@@ -172,52 +172,90 @@ void Printer::printRoutine()
         {
             if(m_printJob.size()>0)
             {
-                m_state = PrinterState::SET_POINT;
+                m_state = PrinterState::HANDLE_COMMAND;
+            }
+            break;
+        }
+
+        case PrinterState::HANDLE_COMMAND:
+        {
+            if(m_printJob.size()>0)
+            {
+                GCode::GAbstractComm* aComm = m_printJob.front();
+                m_printJob.pop();
+
+                switch(aComm->commType())
+                {
+                    case GCode::GCommType::M51:
+                    {
+                        findCenter();
+                        break;
+                    }
+                    case GCode::GCommType::G1:
+                    {
+                        GCode::G1Comm* g1Comm = static_cast<GCode::G1Comm*>(aComm);
+                        if(g1Comm)
+                        {
+                            targetPosition = g1Comm->decartCoordinates();
+                            targetPosition.x = targetPosition.x * printScaleCoef;
+                            targetPosition.y = targetPosition.y * printScaleCoef;
+
+                            m_state = PrinterState::SET_POINT;
+                        }
+                        break;
+                    }
+                    case GCode::GCommType::G4:
+                    {
+                        GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(aComm);
+                        if(g4Comm)
+                        {
+                            printf("End of file.\r\n");
+                            pauseThread();
+                            Delay_Ms(g4Comm->pause()); //  ?????m_state = PrinterState::PAUSE;
+                            resumeThread();
+                        }
+                        break;
+                    }
+                }
+                delete aComm;
+            }
+            else
+            {
+                m_state = PrinterState::IDLE;
             }
             break;
         }
 
         case PrinterState::SET_POINT:
         {
-
-            if(m_printJob.size()>0)
+            if(targetPosition.x == currentPosition.x && currentPosition.y == targetPosition.y)
             {
-                targetPosition = m_printJob.front();
+                m_state = PrinterState::HANDLE_COMMAND;
+                return; //skip point
+            }
 
-                targetPosition.x = targetPosition.x * printScaleCoef;
-                targetPosition.y = targetPosition.y * printScaleCoef;
+            float_t deltaX = targetPosition.x - currentPosition.x;
+            float_t deltaY = targetPosition.y - currentPosition.y;
+            targetPolarPosition = Coord::convertDecartToPolar(targetPosition);
 
-                m_printJob.pop();
+            float_t lineLength = sqrt(pow((deltaX), 2) + pow((deltaY), 2));
+            float_t steps = lineLength/stepSize;
+            stepX = deltaX / steps;
+            stepY = deltaY / steps;
 
-                if(targetPosition.x == currentPosition.x && currentPosition.y == targetPosition.y) return; //skip point
+            stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2))) / speed;
 
-                float_t deltaX = targetPosition.x - currentPosition.x;
-                float_t deltaY = targetPosition.y - currentPosition.y;
-                targetPolarPosition = Coord::convertDecartToPolar(targetPosition);
-
-                float_t lineLength = sqrt(pow((deltaX), 2) + pow((deltaY), 2));
-                float_t steps = lineLength/stepSize;
-                stepX = deltaX / steps;
-                stepY = deltaY / steps;
-
-                stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2))) / speed;
-
-                // INFO block==========
-//                printf("Point num: %d\r\n", pointNum);
+            // INFO block==========
+                printf("Point num: %d\r\n", pointNum);
 //                printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
 //                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
 //                printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
 //                printf("\r\n");
-                //=================================
+            //=================================
 
-                pointNum++;
+            pointNum++;
 
-                m_state = PrinterState::SET_STEP;
-            }
-            else
-            {
-                m_state = PrinterState::IDLE;
-            }
+            m_state = PrinterState::SET_STEP;
             break;
         }
 
@@ -228,7 +266,7 @@ void Printer::printRoutine()
 
             if((fabs(targetPosition.x - currentPosition.x) < minErrX) && (fabs(targetPosition.y - currentPosition.y) < minErrY))
             {
-                m_state = PrinterState::SET_POINT;
+                m_state = PrinterState::HANDLE_COMMAND;
             }
             else
             {
@@ -281,7 +319,7 @@ void Printer::printRoutine()
                 rTicksCounter = 0;
                 fiTicksCounter = 0;
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-                m_state = PrinterState::SET_POINT;
+                m_state = PrinterState::HANDLE_COMMAND;
             }
             break;
         }
@@ -307,6 +345,7 @@ void Printer::printRoutine()
 
                 printf("R zeroing\r\n");
 
+                // TODO: find real center from sensor data, not fixed move
                 rTicksCounter = lengthToMotorTicks(7.5); //setStep()?
                 m_state = PrinterState::CORRECTING_CENTER;
             }

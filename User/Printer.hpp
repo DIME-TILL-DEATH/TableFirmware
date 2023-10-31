@@ -8,6 +8,11 @@
 
 #include "Coordinates.hpp"
 
+#include "GCode/GAbstractComm.hpp"
+#include "GCode/M51Comm.hpp"
+#include "GCode/G1Comm.hpp"
+#include "GCode/G4Comm.hpp"
+
 #define EXTI_RSENS_LINE EXTI_Line10
 #define EXTI_FISENS_LINE EXTI_Line13
 
@@ -36,7 +41,7 @@ public:
 
     void findCenter();
 
-    void pushPrintPoint(const Coord::DecartPoint& printPoint);
+    void pushPrintCommand(GCode::GAbstractComm* command);
     void printRoutine();
 
     void makeRStep();
@@ -54,16 +59,17 @@ private:
     {
         ERROR = 0,
         IDLE,
+        HANDLE_COMMAND,
         SET_POINT,
-        PRINTING,
         SET_STEP,
+        PRINTING,
         SEARCH_R_ZERO,
         SEARCH_FI_ZERO,
         CORRECTING_CENTER
     }PrinterState;
 
     PrinterState m_state;
-    std::queue<Coord::DecartPoint> m_printJob;
+    std::queue<GCode::GAbstractComm*> m_printJob;
 
     Coord::DecartPoint currentPosition{0, 0};
     Coord::DecartPoint targetPosition{0, 0};
@@ -91,7 +97,6 @@ private:
     bool fiCenterTrigger = false;
     bool rCenterTrigger = false;
 
-    // HW-------------------------------------------
     void timersInit();
     void pinsInit();
 
@@ -102,7 +107,6 @@ private:
 
     void setStep(double_t dR, double_t dFi, double_t stepTime);
     void stop();
-    // HW----------------------------------------------------------
 
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
     static constexpr uint16_t minRPeriod = 100;
@@ -110,7 +114,7 @@ private:
 
     static constexpr double_t printScaleCoef = 0.7;
 
-    static constexpr double_t speed = 15;//7.5;
+    static constexpr double_t speed = 20;//7.5;
     static constexpr double_t stepSize = 1;
 
     static constexpr uint16_t rMoveDiapason = 270;
