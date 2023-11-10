@@ -114,7 +114,7 @@ private:
 
     static constexpr double_t printScaleCoef = 0.7;
 
-    static constexpr double_t speed = 20;//7.5;
+    static constexpr double_t speed = 40;//7.5;
     static constexpr double_t stepSize = 1;
 
     static constexpr uint16_t rMoveDiapason = 270;
