@@ -356,9 +356,21 @@ void Printer::printRoutine()
         {
             if(rTicksCounter==0)
             {
-                m_state = PrinterState::IDLE;
+
                 currentPolarPosition.r = 0;
                 currentPolarPosition.fi = 0;
+
+                setStep(0, coordSysRotation, 30);
+                m_state = PrinterState::IDLE;
+            }
+            break;
+        }
+
+        case PrinterState::ROTATE_COORD_SYS:
+        {
+            if(fiTicksCounter)
+            {
+                m_state = PrinterState::IDLE;
             }
             break;
         }
