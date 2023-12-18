@@ -1,0 +1,8 @@
+
+*.zip
+
+esp32/include/README
+
+esp32/lib/README
+
+esp32/test/README
