@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 
@@ -17,6 +18,7 @@ Printer printer;
 
 #define PRIORITY_FILE_MANAGER_TASK 50
 #define PRIORITY_PRINTER_TASK 100
+#define PRIORITY_ISR_TIMER_HANDLER 200
 
 QueueHandle_t gcodesQueue;
 
@@ -38,7 +40,7 @@ static void fileManager_task(void *arg)
     {
         for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
         {
-          xQueueSendToBack(gcodesQueue, &(nextCommBlock.at(cnt)), pdMS_TO_TICKS(10000));            
+          xQueueSendToBack(gcodesQueue, &(nextCommBlock.at(cnt)), portMAX_DELAY);            
           taskYIELD();
         }
     }
@@ -71,17 +73,44 @@ static void printer_task(void *arg)
   }
 }
 
+static SemaphoreHandle_t rTimerSemaphore, fiTimerSemaphore;
+TaskHandle_t rTimer_taskHandle;
+static void rTimer_task(void *arg)
+{
+  for( ;; )
+  {
+    if(xSemaphoreTake(rTimerSemaphore, portMAX_DELAY))
+    {
+      printer.makeRStep();
+    }
+  }
+}
+
+TaskHandle_t fiTimer_taskHandle;
+static void fiTimer_task(void *arg)
+{
+  for( ;; )
+  {
+    if(xSemaphoreTake(fiTimerSemaphore, portMAX_DELAY))
+    {
+      printer.makeFiStep();
+    }
+  }
+}
+
+// ISR========================================
 static bool IRAM_ATTR rTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
 {
-  printer.makeRStep();
-  return pdFALSE;
+  xSemaphoreGiveFromISR(rTimerSemaphore, NULL);
+  return xTaskResumeFromISR(rTimer_taskHandle);
 }
 
 static bool IRAM_ATTR fiTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
 {
-  printer.makeFiStep();
-  return pdFALSE;
+  xSemaphoreGiveFromISR(fiTimerSemaphore, NULL);
+  return xTaskResumeFromISR(fiTimer_taskHandle);
 }
+// MAIN=========================================
 
 extern "C" void app_main(void)
 {
@@ -95,6 +124,11 @@ extern "C" void app_main(void)
   ESP_ERROR_CHECK(ret);
 
   WIFI_Init();
+
+  rTimerSemaphore = xSemaphoreCreateBinary();
+  fiTimerSemaphore = xSemaphoreCreateBinary();
+  xTaskCreatePinnedToCore(rTimer_task, "rTimer", 1024, NULL, PRIORITY_ISR_TIMER_HANDLER, &rTimer_taskHandle, 1);
+  xTaskCreatePinnedToCore(fiTimer_task, "fiTimer", 1024, NULL, PRIORITY_ISR_TIMER_HANDLER, &fiTimer_taskHandle, 1);
 
   printer.initPins();
   printer.initTimers(rTimer_on_alarm_cb, fiTimer_on_alarm_cb);
@@ -110,3 +144,4 @@ extern "C" void app_main(void)
     ESP_LOGE("MAIN", "Failed to create gCodes queue");
   }
 }
+

@@ -2,6 +2,7 @@
 #define PRINTERPINS_H
 
 #include "driver/gpio.h"
+#include "driver/spi_master.h"
 
 namespace Pins
 {
@@ -36,6 +37,11 @@ class PrinterPins
         PinState fiStep{PinState::RESET};
         PinState rDir{PinState::RESET};
         PinState fiDir{PinState::RESET};
+
+        spi_device_handle_t spiToSR;
+
+        uint8_t srWord{0};
+        void srWrite();
 };
 
 };

@@ -22,31 +22,56 @@ PrinterPins::PrinterPins()
     gpio_set_level(pinFiStep, 0);
     gpio_set_level(pinFiDir, 0);
 
-    ESP_LOGI("PRINTER PINS:", "pinRstep: %d, pinRDir: %d, pinFiStep: %d, pinFiDir: %d\r\n", pinRStep, pinRDir, pinFiStep, pinFiDir);
+    esp_err_t ret;
+    
+    spi_bus_config_t buscfg = {};    
+    buscfg.mosi_io_num=21;
+    buscfg.sclk_io_num=16;
+    buscfg.miso_io_num=-1;
+    buscfg.quadwp_io_num=-1;
+    buscfg.quadhd_io_num=-1;
+    // buscfg.max_transfer_sz=1;
+
+    ret=spi_bus_initialize(VSPI_HOST, &buscfg, SPI_DMA_DISABLED);
+    ESP_ERROR_CHECK(ret);
+
+    spi_device_interface_config_t devcfg = {};
+
+    devcfg.clock_speed_hz=16*1000*1000;
+    devcfg.mode=0;                                
+    devcfg.spics_io_num=17;            
+    devcfg.queue_size=1;                          
+
+    ret=spi_bus_add_device(VSPI_HOST, &devcfg, &spiToSR);
+    ESP_ERROR_CHECK(ret);
 }
 
 void PrinterPins::rStepState(PinState newState)
 {
     rStep = newState;
     gpio_set_level(pinRStep, rStep);
+    srWrite();
 }
 
 void PrinterPins::fiStepState(PinState newState)
 {
     fiStep = newState;
     gpio_set_level(pinFiStep, fiStep);
+    srWrite();
 }
 
 void PrinterPins::rDirState(PinState newState)
 {
     rDir = newState;
     gpio_set_level(pinRDir, rDir);
+    srWrite();
 }
 
 void PrinterPins::fiDirState(PinState newState)
 {
     fiDir = newState;
     gpio_set_level(pinFiDir, fiDir);
+    srWrite();
 }
 
 PinState PrinterPins::getRStep()
@@ -67,4 +92,19 @@ PinState PrinterPins::getRDir()
 PinState PrinterPins::getFiDir()
 {
     return fiDir;
+}
+
+void PrinterPins::srWrite()
+{
+    esp_err_t ret;
+    spi_transaction_t t = {};
+
+    srWord = 1 | (rStep<<1) | (rDir<<2) | (fiStep<<3)  | (fiDir<<4);
+               
+    t.flags=SPI_TRANS_USE_TXDATA;
+    t.length=8;                
+    t.tx_data[0] = srWord;               
+            
+    ret=spi_device_polling_transmit(spiToSR, &t);  
+    assert(ret==ESP_OK);            
 }

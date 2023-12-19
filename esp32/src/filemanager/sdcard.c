@@ -35,7 +35,7 @@ esp_err_t SDBUS_Init(void)
         .max_transfer_sz = 4000,
     };
 
-    ret = spi_bus_initialize(host.slot, &bus_cfg, 1);//SDSPI_DEFAULT_DMA);
+    ret = spi_bus_initialize(host.slot, &bus_cfg, 1);
     if (ret != ESP_OK) 
     {
         ESP_LOGE(SDCARD_TAG, "Failed to initialize bus.");
