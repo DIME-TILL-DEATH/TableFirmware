@@ -1,58 +1,8 @@
-# Prerequisites
-*.d
 
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+*.zip
 
-# Linker output
-*.ilk
-*.map
-*.exp
+esp32/include/README
 
-# Precompiled Headers
-*.gch
-*.pch
+esp32/lib/README
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-
-Core/*
-Debug/*
-obj/*
-Peripheral/*
-Startup/*
+esp32/test/README

@@ -120,9 +120,9 @@ void Printer::findCenter()
 {
     pauseThread();
 
-    TIM_SetAutoreload(TIM2, 500);
+    TIM_SetAutoreload(TIM2, 350);
     TIM_SetCounter(TIM2, 0);
-    TIM_SetAutoreload(TIM3, 500);
+    TIM_SetAutoreload(TIM3, 350);
     TIM_SetCounter(TIM3, 0);
 
     printf("Finding table center...\r\n");
@@ -356,9 +356,21 @@ void Printer::printRoutine()
         {
             if(rTicksCounter==0)
             {
-                m_state = PrinterState::IDLE;
+
                 currentPolarPosition.r = 0;
                 currentPolarPosition.fi = 0;
+
+                setStep(0, coordSysRotation, 30);
+                m_state = PrinterState::IDLE;
+            }
+            break;
+        }
+
+        case PrinterState::ROTATE_COORD_SYS:
+        {
+            if(fiTicksCounter)
+            {
+                m_state = PrinterState::IDLE;
             }
             break;
         }
@@ -440,6 +452,7 @@ void Printer::setTIMPeriods(double_t rStepTime, double_t fiStepTime)
         fiCorretionCoef = (double_t)minRPeriod / (double_t)timerRPeriod;
         timerRPeriod = minRPeriod;
         timerFiPeriod *=  fiCorretionCoef;
+        printf("Fi correction, coef: %lf", fiCorretionCoef);
     }
 
     if(timerFiPeriod < minFiPeriod)
@@ -448,6 +461,7 @@ void Printer::setTIMPeriods(double_t rStepTime, double_t fiStepTime)
         rCorretionCoef = (double_t)minFiPeriod / (double_t)timerFiPeriod;
         timerFiPeriod = minFiPeriod;
         timerRPeriod *=  rCorretionCoef;
+        printf("R correction, coef: %lf", rCorretionCoef);
     }
 
     TIM_SetAutoreload(TIM2, timerRPeriod);

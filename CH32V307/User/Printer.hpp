@@ -65,7 +65,8 @@ private:
         PRINTING,
         SEARCH_R_ZERO,
         SEARCH_FI_ZERO,
-        CORRECTING_CENTER
+        CORRECTING_CENTER,
+        ROTATE_COORD_SYS
     }PrinterState;
 
     PrinterState m_state;
@@ -97,6 +98,9 @@ private:
     bool fiCenterTrigger = false;
     bool rCenterTrigger = false;
 
+    double_t speed = 40;//7.5;
+    double_t coordSysRotation = M_PI_2;
+
     void timersInit();
     void pinsInit();
 
@@ -114,7 +118,6 @@ private:
 
     static constexpr double_t printScaleCoef = 0.7;
 
-    static constexpr double_t speed = 20;//7.5;
     static constexpr double_t stepSize = 1;
 
     static constexpr uint16_t rMoveDiapason = 270;
