@@ -3,6 +3,8 @@
 #include "esp_log.h"
 #include "printer.hpp"
 
+//#define GLOBAL_IGNORE_ENDSTOPS
+
 Printer::Printer()
 {
     m_state = PrinterState::IDLE;
@@ -21,40 +23,9 @@ void Printer::initTimers(gptimer_alarm_cb_t rTimerCb,
     fiTimer = new IntervalTimer(fiTimerCb);
 }
 
-void Printer::initPins()
+void Printer::initPins(gpio_isr_t endStops_cb)
 {
-    printerPins = new Pins::PrinterPins();
-
-
-    // EXTI_InitTypeDef EXTI_InitStructure = {0};
-
-    // pinRSensor.pin = GPIO_Pin_10;
-    // pinRSensor.port = GPIOB;
-    // GPIO_InitStructure.GPIO_Pin = pinRSensor.pin;
-    // GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    // GPIO_Init(pinRSensor.port, &GPIO_InitStructure);
-
-    // GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource10);
-    // EXTI_InitStructure.EXTI_Line = EXTI_RSENS_LINE;
-    // EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    // EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
-    // EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    // EXTI_Init(&EXTI_InitStructure);
-
-    // pinFiSensor.pin = GPIO_Pin_13;
-    // pinFiSensor.port = GPIOB;
-    // GPIO_InitStructure.GPIO_Pin = pinRSensor.pin;
-    // GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    // GPIO_Init(pinRSensor.port, &GPIO_InitStructure);
-
-    // GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
-    // EXTI_InitStructure.EXTI_Line = EXTI_FISENS_LINE;
-    // EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    // EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-    // EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    // EXTI_Init(&EXTI_InitStructure);
+    printerPins = new Pins::PrinterPins(endStops_cb);
 }
 
 void Printer::findCenter()
@@ -76,22 +47,32 @@ void Printer::findCenter()
     printerPins->rDirState(Pins::PinState::RESET);
     printerPins->fiDirState(Pins::PinState::SET);
 
-    if(true) //GPIO_ReadInputDataBit(pinFiSensor.port, pinFiSensor.pin) == Bit_SET)
+#ifdef GLOBAL_IGNORE_ENDSTOPS
+    if(true)
     {
-        fiCenterTrigger = true;
+#else
+    if(gpio_get_level(PIN_ENDSTOP_FI) == Pins::PinState::SET)
+    {
+#endif   
+      fiCenterTrigger = true;
     }
     else
     {
         setStep(0, -2*M_PI, 30);
     }
 
-    if(true)//GPIO_ReadInputDataBit(pinRSensor.port, pinRSensor.pin) == Bit_RESET)
+#ifdef GLOBAL_IGNORE_ENDSTOPS
+    if(true)
     {
-        rCenterTrigger = true;
+#else
+    if(gpio_get_level(PIN_ENDSTOP_R) == Pins::PinState::RESET)
+    {
+#endif   
+       rCenterTrigger = true;
     }
 
-    // EXTI_ClearITPendingBit(EXTI_FISENS_LINE | EXTI_RSENS_LINE);
-    // NVIC_EnableIRQ(EXTI15_10_IRQn);
+    gpio_intr_enable(PIN_ENDSTOP_R);
+    gpio_intr_enable(PIN_ENDSTOP_FI);
 
     m_state = PrinterState::SEARCH_FI_ZERO;
 
@@ -283,7 +264,9 @@ void Printer::printRoutine()
             if(rCenterTrigger)
             {
                 stop();
-//                NVIC_DisableIRQ(EXTI15_10_IRQn);
+
+                gpio_intr_disable(PIN_ENDSTOP_R);
+                gpio_intr_disable(PIN_ENDSTOP_FI);
 
                 printf("R zeroing\r\n");
 
@@ -409,8 +392,6 @@ void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
 
     rTimer->setInterval(timerRPeriod);
     fiTimer->setInterval(timerFiPeriod);
-
-    //printf("TIM periods r:%d, fi:%d\r\n", timerRPeriod, timerFiPeriod);
 }
 
 void Printer::makeRStep()

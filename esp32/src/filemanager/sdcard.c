@@ -2,6 +2,8 @@
 #include <sys/unistd.h>
 #include <sys/stat.h>
 
+#include "pins_esp32_wroom.h"
+
 #include "driver/spi_master.h"
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
@@ -10,10 +12,10 @@
 
 static const char *SDCARD_TAG = "SDCARD task";
 
-#define PIN_NUM_MISO  12
-#define PIN_NUM_MOSI  13
-#define PIN_NUM_CLK   14
-#define PIN_NUM_CS    15
+#define PIN_NUM_MISO  PIN_SDCARD_MISO
+#define PIN_NUM_MOSI  PIN_SDCARD_MOSI
+#define PIN_NUM_CLK   PIN_SDCARD_CLK
+#define PIN_NUM_CS    PIN_SDCARD_CS
 
 esp_err_t SDBUS_Init(void)
 {

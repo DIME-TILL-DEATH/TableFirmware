@@ -1,6 +1,8 @@
 #ifndef PRINTERPINS_H
 #define PRINTERPINS_H
 
+#include "pins_esp32_wroom.h"
+
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 
@@ -9,14 +11,14 @@ namespace Pins
 
 enum PinState
 {
-    SET = 0,
-    RESET
+    RESET = 0,
+    SET = 1  
 };
 
 class PrinterPins
 {
     public:
-        PrinterPins();
+        PrinterPins(gpio_isr_t endStops_cb);
 
         void rStepState(PinState newState);
         void fiStepState(PinState newState);
@@ -28,10 +30,10 @@ class PrinterPins
         PinState getFiStep();
         PinState getFiDir();
     private:
-        gpio_num_t pinRStep{GPIO_NUM_19};
-        gpio_num_t pinRDir{GPIO_NUM_25};
-        gpio_num_t pinFiStep{GPIO_NUM_23};
-        gpio_num_t pinFiDir{GPIO_NUM_26};
+        gpio_num_t pinRStep{PIN_RSTEP};
+        gpio_num_t pinRDir{PIN_RDIR};
+        gpio_num_t pinFiStep{PIN_FISTEP};
+        gpio_num_t pinFiDir{PIN_FIDIR};
 
         PinState rStep{PinState::RESET};
         PinState fiStep{PinState::RESET};

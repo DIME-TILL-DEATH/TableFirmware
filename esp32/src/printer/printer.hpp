@@ -36,7 +36,7 @@ public:
 
     void initTimers(gptimer_alarm_cb_t rTimerCb,
                     gptimer_alarm_cb_t fiTimerCb);
-    void initPins();
+    void initPins(gpio_isr_t endStops_cb);
 
     void findCenter();
 

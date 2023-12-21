@@ -20,6 +20,8 @@ Printer printer;
 #define PRIORITY_PRINTER_TASK 100
 #define PRIORITY_ISR_TIMER_HANDLER 200
 
+static portMUX_TYPE printMutex;
+static SemaphoreHandle_t rTimerSemaphore, fiTimerSemaphore;
 QueueHandle_t gcodesQueue;
 
 static void fileManager_task(void *arg)
@@ -35,24 +37,27 @@ static void fileManager_task(void *arg)
 
   for(;;)
   {
-    std::vector<GCode::GAbstractComm*> nextCommBlock = fileManager.readNextBlock();
-    if(nextCommBlock.size()>0)
-    {
-        for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
-        {
-          xQueueSendToBack(gcodesQueue, &(nextCommBlock.at(cnt)), portMAX_DELAY);            
-          taskYIELD();
-        }
+    // if(uxQueueSpacesAvailable(gcodesQueue))
+    // {
+      std::vector<GCode::GAbstractComm*> nextCommBlock = fileManager.readNextBlock();
+      if(nextCommBlock.size()>0)
+      {
+          for(uint16_t cnt=0; cnt<nextCommBlock.size(); cnt++)
+          {
+            xQueueSendToBack(gcodesQueue, &(nextCommBlock.at(cnt)), portMAX_DELAY);            
+            taskYIELD();
+          }
+      }
+      else
+      {
+          do
+          {
+              result = fileManager.loadNextPrint();
+          }
+          while(result != FM_OK);
+      } 
     }
-    else
-    {
-        do
-        {
-            result = fileManager.loadNextPrint();
-        }
-        while(result != FM_OK);
-    } 
-  }
+  // }
 }
 
 static void printer_task(void *arg)
@@ -68,12 +73,12 @@ static void printer_task(void *arg)
          printer.pushPrintCommand(recComm);
       }
     }
+
     printer.printRoutine();
     vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
-static SemaphoreHandle_t rTimerSemaphore, fiTimerSemaphore;
 TaskHandle_t rTimer_taskHandle;
 static void rTimer_task(void *arg)
 {
@@ -81,7 +86,9 @@ static void rTimer_task(void *arg)
   {
     if(xSemaphoreTake(rTimerSemaphore, portMAX_DELAY))
     {
+      taskENTER_CRITICAL(&printMutex);
       printer.makeRStep();
+      taskEXIT_CRITICAL(&printMutex);
     }
   }
 }
@@ -93,12 +100,30 @@ static void fiTimer_task(void *arg)
   {
     if(xSemaphoreTake(fiTimerSemaphore, portMAX_DELAY))
     {
-      printer.makeFiStep();
+      taskENTER_CRITICAL(&printMutex);
+      printer.makeFiStep(); 
+      taskEXIT_CRITICAL(&printMutex);
     }
   }
 }
 
 // ISR========================================
+static void IRAM_ATTR gpio_isr_handler(void* arg)
+{
+    uint32_t gpio_num = (uint32_t) arg;
+    
+    if(gpio_num == PIN_ENDSTOP_R)
+    {
+      printer.trigRZero();
+      esp_rom_printf("Trigger R center\r\n");
+    }
+    if(gpio_num == PIN_ENDSTOP_FI)
+    {
+      printer.trigFiZero();
+      esp_rom_printf("Trigger Fi center\r\n");
+    }
+}
+
 static bool IRAM_ATTR rTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
 {
   xSemaphoreGiveFromISR(rTimerSemaphore, NULL);
@@ -125,12 +150,14 @@ extern "C" void app_main(void)
 
   WIFI_Init();
 
+  printMutex = portMUX_INITIALIZER_UNLOCKED;
+
   rTimerSemaphore = xSemaphoreCreateBinary();
   fiTimerSemaphore = xSemaphoreCreateBinary();
   xTaskCreatePinnedToCore(rTimer_task, "rTimer", 1024, NULL, PRIORITY_ISR_TIMER_HANDLER, &rTimer_taskHandle, 1);
   xTaskCreatePinnedToCore(fiTimer_task, "fiTimer", 1024, NULL, PRIORITY_ISR_TIMER_HANDLER, &fiTimer_taskHandle, 1);
 
-  printer.initPins();
+  printer.initPins(gpio_isr_handler);
   printer.initTimers(rTimer_on_alarm_cb, fiTimer_on_alarm_cb);
 
   gcodesQueue = xQueueCreate(FileManager::blockSize, sizeof(GCode::GAbstractComm*));
