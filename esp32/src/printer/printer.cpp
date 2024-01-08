@@ -3,7 +3,7 @@
 #include "esp_log.h"
 #include "printer.hpp"
 
-//#define GLOBAL_IGNORE_ENDSTOPS
+#define GLOBAL_IGNORE_ENDSTOPS
 
 Printer::Printer()
 {
@@ -79,9 +79,9 @@ void Printer::findCenter()
     resumeThread();
 }
 
-void Printer::pushPrintCommand(GCode::GAbstractComm* command)
+void Printer::setNextCommand(GCode::GAbstractComm* command)
 {
-    m_printJob.push(command);
+    nextComm = command;
 }
 
 void Printer::printRoutine()
@@ -90,7 +90,8 @@ void Printer::printRoutine()
     {
         case PrinterState::IDLE:
         {
-            if(m_printJob.size()>0)
+            // if(m_printJob.size()>0)
+            if(nextComm != nullptr)
             {
                 m_state = PrinterState::HANDLE_COMMAND;
             }
@@ -99,12 +100,9 @@ void Printer::printRoutine()
 
         case PrinterState::HANDLE_COMMAND:
         {
-            if(m_printJob.size()>0)
+            if(nextComm != nullptr)
             {
-                GCode::GAbstractComm* aComm = m_printJob.front();
-                m_printJob.pop();
-
-                switch(aComm->commType())
+                switch(nextComm->commType())
                 {
                     case GCode::GCommType::M51:
                     {
@@ -113,7 +111,7 @@ void Printer::printRoutine()
                     }
                     case GCode::GCommType::G1:
                     {
-                        GCode::G1Comm* g1Comm = static_cast<GCode::G1Comm*>(aComm);
+                        GCode::G1Comm* g1Comm = static_cast<GCode::G1Comm*>(nextComm);
                         if(g1Comm)
                         {
                             targetPosition = g1Comm->decartCoordinates();
@@ -128,7 +126,7 @@ void Printer::printRoutine()
                     }
                     case GCode::GCommType::G4:
                     {
-                        GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(aComm);
+                        GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(nextComm);
                         if(g4Comm)
                         {
                             printf("End of file.\r\n");
@@ -140,7 +138,8 @@ void Printer::printRoutine()
                     }
                     default: ESP_LOGE("PRINTER", "Unhandled CGomm");
                 }
-                delete aComm;
+                delete nextComm;
+                nextComm = nullptr;
             }
             else
             {
@@ -480,9 +479,4 @@ void Printer::stop()
 bool Printer::isPrinterFree()
 {
     return m_state == PrinterState::IDLE;
-}
-
-bool Printer::isQueueFull()
-{
-    return m_printJob.size() >= printerQueueSize;
 }

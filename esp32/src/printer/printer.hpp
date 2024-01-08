@@ -14,9 +14,6 @@
 #include "gcode/g1comm.hpp"
 #include "gcode/g4comm.hpp"
 
-// #define EXTI_RSENS_LINE EXTI_Line10
-// #define EXTI_FISENS_LINE EXTI_Line13
-
 typedef enum
 {
     ERROR = 0,
@@ -40,7 +37,7 @@ public:
 
     void findCenter();
 
-    void pushPrintCommand(GCode::GAbstractComm* command);
+    void setNextCommand(GCode::GAbstractComm* command);
     void printRoutine();
 
     void makeRStep();
@@ -52,8 +49,9 @@ public:
     void pauseThread();
     void resumeThread();
 
+    uint16_t currentPrintPointNum() {return pointNum;}
+
     bool isPrinterFree();
-    bool isQueueFull();
 private:
     typedef enum
     {
@@ -75,7 +73,7 @@ private:
     IntervalTimer* fiTimer;
 
     PrinterState m_state;
-    std::queue<GCode::GAbstractComm*> m_printJob;
+    GCode::GAbstractComm* nextComm{nullptr};
 
     Coord::DecartPoint currentPosition{0, 0};
     Coord::DecartPoint targetPosition{0, 0};
@@ -91,14 +89,6 @@ private:
     double_t stepX;
     double_t stepY;
     double_t stepTime;
-
-    // PrinterPin pinRStep;
-    // PrinterPin pinRDir; // RESET - R>0
-    // PrinterPin pinRSensor;
-
-    // PrinterPin pinFiStep;
-    // PrinterPin pinFiDir;  // SET - clockwise direction
-    // PrinterPin pinFiSensor;
 
     bool fiCenterTrigger = false;
     bool rCenterTrigger = false;

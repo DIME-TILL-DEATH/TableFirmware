@@ -6,21 +6,21 @@ using namespace Pins;
 
 PrinterPins::PrinterPins(gpio_isr_t endStops_cb)
 {
-    uint64_t outputPinsSelection = ((1ULL << pinRStep) | (1ULL<<pinRDir) | (1ULL<<pinFiStep) | (1ULL<<pinFiDir));
+    // uint64_t outputPinsSelection = ((1ULL << pinRStep) | (1ULL<<pinRDir) | (1ULL<<pinFiStep) | (1ULL<<pinFiDir));
 
     gpio_config_t io_conf = {};
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.mode = GPIO_MODE_OUTPUT; 
-    io_conf.pin_bit_mask = outputPinsSelection;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;  
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    // io_conf.intr_type = GPIO_INTR_DISABLE;
+    // io_conf.mode = GPIO_MODE_OUTPUT; 
+    // io_conf.pin_bit_mask = outputPinsSelection;
+    // io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;  
+    // io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
    
-    gpio_config(&io_conf);   
+    // gpio_config(&io_conf);   
 
-    gpio_set_level(pinRStep, 0);
-    gpio_set_level(pinRDir, 0);
-    gpio_set_level(pinFiStep, 0);
-    gpio_set_level(pinFiDir, 0);
+    // gpio_set_level(pinRStep, 0);
+    // gpio_set_level(pinRDir, 0);
+    // gpio_set_level(pinFiStep, 0);
+    // gpio_set_level(pinFiDir, 0);
 
     esp_err_t ret;
     
@@ -73,28 +73,28 @@ PrinterPins::PrinterPins(gpio_isr_t endStops_cb)
 void PrinterPins::rStepState(PinState newState)
 {
     rStep = newState;
-    gpio_set_level(pinRStep, rStep);
+    // gpio_set_level(pinRStep, rStep);
     srWrite();
 }
 
 void PrinterPins::fiStepState(PinState newState)
 {
     fiStep = newState;
-    gpio_set_level(pinFiStep, fiStep);
+    // gpio_set_level(pinFiStep, fiStep);
     srWrite();
 }
 
 void PrinterPins::rDirState(PinState newState)
 {
     rDir = newState;
-    gpio_set_level(pinRDir, rDir);
+    // gpio_set_level(pinRDir, rDir);
     srWrite();
 }
 
 void PrinterPins::fiDirState(PinState newState)
 {
     fiDir = newState;
-    gpio_set_level(pinFiDir, fiDir);
+    // gpio_set_level(pinFiDir, fiDir);
     srWrite();
 }
 
@@ -123,7 +123,7 @@ void PrinterPins::srWrite()
     esp_err_t ret;
     spi_transaction_t t = {};
 
-    srWord = 1 | (rStep<<1) | (rDir<<2) | (fiStep<<3)  | (fiDir<<4);
+    srWord = 0 | (rStep<<1) | (rDir<<2) | (fiStep<<3)  | (fiDir<<4);
                
     t.flags=SPI_TRANS_USE_TXDATA;
     t.length=8;                

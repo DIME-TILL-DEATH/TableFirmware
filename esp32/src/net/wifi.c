@@ -9,10 +9,17 @@
 #include "esp_event.h"
 #include "esp_log.h"
 
+#include <netdb.h>
+
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
+#include "esp_log.h"
+#include "nvs_flash.h"
+
 static const char *WIFI_TAG = "wifi task";
+
+esp_netif_t* netif_ptr;
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data)
@@ -21,7 +28,8 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
     {
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
         ESP_LOGI(WIFI_TAG, "station "MACSTR" join, AID=%d",MAC2STR(event->mac), event->aid);
-    } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) 
+    } 
+    else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) 
     {
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
         ESP_LOGI(WIFI_TAG, "station "MACSTR" leave, AID=%d",MAC2STR(event->mac), event->aid);
@@ -30,9 +38,27 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
 
 void WIFI_Init(void)
 {
+      //Initialize NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) 
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_ap();
+    netif_ptr = esp_netif_create_default_wifi_ap();
+
+    esp_netif_ip_info_t NETIF_ipInfo;
+
+    esp_netif_dhcps_stop(netif_ptr);
+    NETIF_ipInfo.ip.addr = ipaddr_addr("192.168.1.1");
+    NETIF_ipInfo.gw.addr = ipaddr_addr("192.168.1.1");
+    NETIF_ipInfo.netmask.addr = ipaddr_addr("255.255.255.0");
+    esp_netif_set_ip_info(netif_ptr, &NETIF_ipInfo);
+    esp_netif_dhcps_start(netif_ptr);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -54,7 +80,9 @@ void WIFI_Init(void)
             .authmode = WIFI_AUTH_WPA_WPA2_PSK,
         },
     };
-    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) {
+
+    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) 
+    {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 

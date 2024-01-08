@@ -30,13 +30,18 @@ public:
     FM_RESULT loadNextPrint();
 
     static constexpr uint8_t blockSize = 32;
+    uint16_t pointsNum() {return m_pointsNum;}
 
-    std::vector<GCode::GAbstractComm*> readNextBlock();
+    GCode::GAbstractComm* readNextComm();
+
+    std::vector<std::string>* getPlaylist_ptr() {return &playlist;};
+    int16_t getCurrentPosition() {return curPlsPos;};
 private:
     
     FILE* currentPrintFile;
     int16_t curPlsPos{-1};
     std::vector<std::string> playlist;
+    uint16_t m_pointsNum{0};
 };
 
 #endif /* USER_FILEMANAGER_HPP */

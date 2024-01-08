@@ -121,72 +121,79 @@ FM_RESULT FileManager::loadNextPrint()
         return FM_ERROR;
     }
 
-    ESP_LOGI(FM_TAG, "File %s succesfully opened. Printing...", currentFileName.c_str());
+    char* result;
+    char readBuf[512];
+    m_pointsNum = 0;
+    do
+    {
+        result = fgets(readBuf, 512, currentPrintFile);
+        m_pointsNum++;
+    } while (result);
+    fseek(currentPrintFile, 0, SEEK_SET);
+    
+    ESP_LOGI(FM_TAG, "File %s succesfully opened. Point num: %d Printing...", currentFileName.c_str(), m_pointsNum);
 
     return FM_OK;
 }
 
-vector<GCode::GAbstractComm*> FileManager::readNextBlock()
+GCode::GAbstractComm* FileManager::readNextComm()
 {
-    char readBuf[512];
+    char readBuf[256];
     char* result;
-    vector<GCode::GAbstractComm*> answer;
-
+    
     if(currentPrintFile == nullptr)
     {
-        return vector<GCode::GAbstractComm*>();
+        return nullptr;
     }
 
-    do
+    result = fgets(readBuf, 256, currentPrintFile);
+    if(result)
     {
-        result = fgets(readBuf, 512, currentPrintFile);
-        if(result)
+        GCode::GAbstractComm* answer = nullptr;
+        vector<string> strArgs;
+
+        char* line_ptr = &readBuf[0];
+        char* foundArg;
+        while((foundArg = strsep(&line_ptr, " ")) != NULL)
         {
-            vector<string> strArgs;
+            strArgs.push_back(foundArg);
+        }
 
-            char* line_ptr = &readBuf[0];
-            char* foundArg;
-            while((foundArg = strsep(&line_ptr, " ")) != NULL)
+        if(strArgs.size()>0)
+        {
+            // forming commands:
+            if(strArgs.at(0) == string("M51"))
             {
-                strArgs.push_back(foundArg);
+                GCode::M51Comm* command = new GCode::M51Comm(strArgs.at(1));
+                answer = command;
             }
-
-            if(strArgs.size()>0)
+            else if(strArgs.at(0) == "G1")
             {
-                // forming commands:
-                if(strArgs.at(0) == string("M51"))
-                {
-                    GCode::M51Comm* command = new GCode::M51Comm(strArgs.at(1));
-                    answer.push_back(command);
-                }
-                else if(strArgs.at(0) == "G1")
-                {
-                    string strValue = strArgs.at(1);
-                    strValue.erase(0, 1);
-                    float_t x = stof(strValue);
+                string strValue = strArgs.at(1);
+                strValue.erase(0, 1);
+                float_t x = stof(strValue);
 
-                    strValue = strArgs.at(2);
-                    strValue.erase(0, 1);
-                    float_t y = stof(strValue);;
+                strValue = strArgs.at(2);
+                strValue.erase(0, 1);
+                float_t y = stof(strValue);;
 
-                    strValue = strArgs.at(3);
-                    strValue.erase(0, 1);
-                    float_t speed = stof(strValue);;
-                    GCode::G1Comm* command = new GCode::G1Comm({x, y}, speed);
-                    answer.push_back(command);
-                }
-                else if(strArgs.at(0) == string("G4"))
-                {
-                    string strValue = strArgs.at(1);
-                    strValue.erase(0, 1);
-                    uint32_t value = stoi(strValue);
+                strValue = strArgs.at(3);
+                strValue.erase(0, 1);
+                float_t speed = stof(strValue);;
+                GCode::G1Comm* command = new GCode::G1Comm({x, y}, speed);
+                answer = command;
+            }
+            else if(strArgs.at(0) == string("G4"))
+            {
+                string strValue = strArgs.at(1);
+                strValue.erase(0, 1);
+                uint32_t value = stoi(strValue);
 
-                    GCode::G4Comm* command = new GCode::G4Comm(value);
-                    answer.push_back(command);
-                }
+                GCode::G4Comm* command = new GCode::G4Comm(value);
+                answer = command;
             }
         }
-    }while(result && answer.size()<blockSize);
-
-    return answer;
+        return answer;
+    }
+    else return nullptr;
 }
