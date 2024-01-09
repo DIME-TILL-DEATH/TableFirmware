@@ -6,9 +6,28 @@
 
 #include "frames.h"
 
-void processTransportCommand(NetComm::TransportCommand* transportAnswer, uint8_t* txBuffer, size_t* answerLen)
+#include "lwip/err.h"
+#include "lwip/sockets.h"
+#include "lwip/sys.h"
+
+static const char *TAG = "NET ANSWER";
+
+void sendData(int socket, void* txBuffer, size_t len)
+{
+    if(len>0)
+    {
+        int written = send(socket, txBuffer, len, 0);
+        if (written < 0) 
+        {
+            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+        }
+    }
+}
+
+void processTransportCommand(NetComm::TransportCommand* transportAnswer, int socket)
 {
     FrameHeader_uni answerFrame;
+    char txBuffer[128];
  
     switch(transportAnswer->action())
     {
@@ -38,7 +57,8 @@ void processTransportCommand(NetComm::TransportCommand* transportAnswer, uint8_t
             answerFrame.structData.data0 = transportAnswer->progress.currentPoint;    
             answerFrame.structData.data1 = transportAnswer->progress.printPoints; 
             memcpy(txBuffer, answerFrame.rawData, sizeof(FrameHeader));  
-            *answerLen = sizeof(FrameHeader); 
+
+            sendData(socket, txBuffer, sizeof(FrameHeader));
             break;
         }
 
@@ -49,13 +69,20 @@ void processTransportCommand(NetComm::TransportCommand* transportAnswer, uint8_t
     }
 }
 
-void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, uint8_t* txBuffer, size_t* answerLen)
+void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket)
 {   
     switch(playlistAnswer->action())
     {
         case NetComm::PlaylistCommand::REQUEST_PLAYLIST:
         {
-            ESP_LOGI("Answer", "ready to answer playlist");
+            uint16_t len = 0;
+            std::vector<std::string>* playlist = playlistAnswer->playlist_ptr;
+
+            for(auto it = playlist->begin(); it!=playlist->end(); ++it)
+            {
+                len += (*it).size();
+            }
+            ESP_LOGI("Answer", "ready to answer playlist, frame len: %d", len);
             break;
         }
 
@@ -66,20 +93,20 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, uint8_t* t
     }
 }
 
-void formAnswer(NetComm::AbstractCommand* recvComm, uint8_t* txBuffer, size_t* answerLen)
+void processAnswer(NetComm::AbstractCommand* recvComm, int socket)
 {
     switch (recvComm->commandType())
     {
         case NetComm::TRANSPORT_COMMAND:
         { 
             NetComm::TransportCommand* transportAnswer = static_cast<NetComm::TransportCommand*>(recvComm);
-            processTransportCommand(transportAnswer, txBuffer, answerLen);
+            processTransportCommand(transportAnswer, socket);
             break;
         }
         case NetComm::PLAYLIST_COMMAND:
         {
             NetComm::PlaylistCommand* playlistAnswer = static_cast<NetComm::PlaylistCommand*>(recvComm);
-            processPlaylistCommand(playlistAnswer, txBuffer, answerLen);          
+            processPlaylistCommand(playlistAnswer, socket);          
             break;
         }
         default:

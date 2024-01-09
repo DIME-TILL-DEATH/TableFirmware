@@ -7,6 +7,6 @@
 #include "netcomm/transportcommand.hpp"
 #include "netcomm/playlistcommand.hpp"
 
-void formAnswer(NetComm::AbstractCommand* recvComm, uint8_t* txBuffer, size_t* answerLen);
+void processAnswer(NetComm::AbstractCommand* recvComm, int socket);
 
 #endif

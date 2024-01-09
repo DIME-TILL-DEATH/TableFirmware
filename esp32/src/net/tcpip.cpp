@@ -53,15 +53,26 @@ static void socket_recv_task(const int sock)
             ESP_LOGW(TAG, "Connection closed");
         } 
         else 
-        {            
-            frameParser->processRecvData(rx_buffer, len);
-            NetComm::AbstractCommand* recvComm = frameParser->lastRecvCommand();
-            if(recvComm)
+        {    
+            ESP_LOGI(TAG, "Recieved frame");        
+            frameParser->processRecvData(rx_buffer, len);           
+                        
+            while(frameParser->parsedCommands.size()>0)
             {
+                NetComm::AbstractCommand* recvComm = frameParser->parsedCommands.front();
+                frameParser->parsedCommands.erase(frameParser->parsedCommands.begin());
                 switch(recvComm->commandType())
                 {
-                    case NetComm::TRANSPORT_COMMAND: xQueueSendToBack(printReqQueue, &recvComm, pdMS_TO_TICKS(1000)); break;
-                    case NetComm::PLAYLIST_COMMAND: xQueueSendToBack(fileReqQueue, &recvComm, pdMS_TO_TICKS(1000)); break;
+                    case NetComm::TRANSPORT_COMMAND: 
+                    {
+                        xQueueSendToBack(printReqQueue, &recvComm, pdMS_TO_TICKS(1000)); 
+                        break;
+                    }
+                    case NetComm::PLAYLIST_COMMAND: 
+                    {
+                        xQueueSendToBack(fileReqQueue, &recvComm, pdMS_TO_TICKS(1000)); 
+                        break;
+                    }
                     default: ESP_LOGE(TAG, "Unknown command type"); break;
                 }
             }
@@ -77,7 +88,6 @@ static void socket_recv_task(const int sock)
 
 static void answer_task(void *pvParameters)
 {
-    uint8_t tx_buffer[512];
     NetComm::AbstractCommand* recvComm;
     int socket = *((int*)pvParameters);
 
@@ -86,41 +96,8 @@ static void answer_task(void *pvParameters)
         portBASE_TYPE xStatus = xQueueReceive(netAnswQueue, &recvComm, pdMS_TO_TICKS(10));
         if(xStatus == pdPASS)
         {
-            size_t len = 0;
-            // FrameHeader_uni answerFrame;
-            
-            // switch (recvComm->commandType())
-            // {
-            //     case NetComm::TRANSPORT_COMMAND:
-            //     { 
-            //         NetComm::TransportCommand* transportAnswer = static_cast<NetComm::TransportCommand*>(recvComm);
-            //         ESP_LOGI("Answer", "ready to answer, sock: %d. Cur point: %d, All points: %d", socket, transportAnswer->progress.currentPoint, transportAnswer->progress.printPoints);
-            //         answerFrame.structData.frameType = FrameType::TRANSPORT_ACTIONS;
-            //         answerFrame.structData.actionType = NetComm::TransportCommand::REQUEST_PROGRESS;
-            //         answerFrame.structData.frameSize = sizeof(FrameHeader);
 
-            //         answerFrame.structData.data0 = transportAnswer->progress.currentPoint;    
-            //         answerFrame.structData.data1 = transportAnswer->progress.printPoints; 
-            //         memcpy(tx_buffer, answerFrame.rawData, sizeof(FrameHeader));                  
-            //         break;
-            //     }
-            //     case NetComm::PLAYLIST_COMMAND:
-            //     {
-            //         ESP_LOGI("Answer", "ready to answer playlist");
-            //         break;
-            //     }
-            //     default:
-            //         break;
-            // }
-            formAnswer(recvComm, tx_buffer, &len);
-            if(len>0)
-            {
-                int written = send(socket, tx_buffer, len, 0);
-                if (written < 0) 
-                {
-                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                }
-            }
+            processAnswer(recvComm, socket);
             if(recvComm) delete recvComm;         
         }
     }
