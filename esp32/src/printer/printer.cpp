@@ -117,7 +117,7 @@ void Printer::printRoutine()
                             targetPosition.x = targetPosition.x * printScaleCoef;
                             targetPosition.y = targetPosition.y * printScaleCoef;
 
-                            setState(m_state);
+                            setState(PrinterState::SET_POINT);
 
                             printf("point(%lf, %lf)", targetPosition.x, targetPosition.y);
                         }

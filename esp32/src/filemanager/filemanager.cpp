@@ -99,12 +99,33 @@ FM_RESULT FileManager::loadPlaylist()
     return FM_OK;
 }
 
+void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist, uint16_t actualPlsPos)
+{
+    playlist = *newPlaylist;
+    curPlsPos = actualPlsPos;
+
+}
+
 FM_RESULT FileManager::loadNextPrint()
+{
+    curPlsPos++;
+    if(curPlsPos == playlist.size()) curPlsPos = 0;
+
+    loadPrintFromPlaylist(curPlsPos);
+
+    return FM_OK;
+}
+
+FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
 {
     fclose(currentPrintFile); // close previous
 
-    curPlsPos++;
-    if(curPlsPos == playlist.size()) curPlsPos = 0;
+    if(num > playlist.size()-1)
+    {
+        ESP_LOGE(FM_TAG, "loadPrintFromPlaylis: requested num more than playlist size, num: %d, size: %d", num, playlist.size());
+    }
+
+    curPlsPos = num;
 
     string currentFileName;
     if(playlist.size()>0)
@@ -132,7 +153,6 @@ FM_RESULT FileManager::loadNextPrint()
     fseek(currentPrintFile, 0, SEEK_SET);
     
     ESP_LOGI(FM_TAG, "File %s succesfully opened. Point num: %d Printing...", currentFileName.c_str(), m_pointsNum);
-
     return FM_OK;
 }
 

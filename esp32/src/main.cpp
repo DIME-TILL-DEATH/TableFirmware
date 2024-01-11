@@ -8,7 +8,7 @@
 #include "net/tcpip.hpp"
 
 #include "projdefines.h"
-#include "printsequence.hpp"
+#include "printer/printsequence.hpp"
 #include "printer/printertask.hpp"
 #include "filemanager/filetask.hpp"
 #include "netcomm/abstractcommand.hpp"

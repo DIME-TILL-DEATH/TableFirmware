@@ -27,6 +27,7 @@ void sendData(int socket, void* txBuffer, size_t len)
 void processTransportCommand(NetComm::TransportCommand* transportAnswer, int socket)
 {
     FrameHeader_uni answerFrame;
+    memset(answerFrame.rawData, 0, sizeof(FrameHeader));
     char txBuffer[128];
  
     switch(transportAnswer->action())
@@ -69,8 +70,13 @@ void processTransportCommand(NetComm::TransportCommand* transportAnswer, int soc
     }
 }
 
+#define TX_PLAYLIST_BUFFER_SIZE 1024
 void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket)
 {   
+    FrameHeader_uni answerFrameHeader;
+    memset(answerFrameHeader.rawData, 0, sizeof(FrameHeader));
+    char txBuffer[TX_PLAYLIST_BUFFER_SIZE];
+
     switch(playlistAnswer->action())
     {
         case NetComm::PlaylistCommand::REQUEST_PLAYLIST:
@@ -78,11 +84,35 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
             uint16_t len = 0;
             std::vector<std::string>* playlist = playlistAnswer->playlist_ptr;
 
+            len += sizeof(FrameHeader);
             for(auto it = playlist->begin(); it!=playlist->end(); ++it)
             {
                 len += (*it).size();
             }
-            ESP_LOGI("Answer", "ready to answer playlist, frame len: %d", len);
+
+            answerFrameHeader.structData.frameType = FrameType::PLAYLIST_ACTIONS;
+            answerFrameHeader.structData.actionType = NetComm::PlaylistCommand::REQUEST_PLAYLIST;
+            answerFrameHeader.structData.frameSize = len;
+            
+            int parts = len / TX_PLAYLIST_BUFFER_SIZE + 1;
+            ESP_LOGI("Answer", "ready to answer playlist, frame len: %d, parts: %d", len, parts);
+            
+            memcpy(txBuffer, answerFrameHeader.rawData, sizeof(FrameHeader));
+            auto curItem = playlist->begin();
+            int curSendBytes = sizeof(FrameHeader);
+
+            for(int i=0; i<parts; i++)
+            {
+                while((curItem != playlist->end()) && ((curSendBytes + (*curItem).size()) < TX_PLAYLIST_BUFFER_SIZE))
+                {
+                    memcpy(&txBuffer[curSendBytes], (*curItem).data(), (*curItem).size());
+                    curSendBytes += (*curItem).size();
+                    curItem++;
+                }
+                ESP_LOGI("Answer", "Send part: %d, len: %d", i, curSendBytes);
+                sendData(socket, txBuffer, curSendBytes);
+                curSendBytes = 0;
+            }
             break;
         }
 

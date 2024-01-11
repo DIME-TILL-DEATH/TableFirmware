@@ -28,11 +28,14 @@ public:
     FM_RESULT connectSDCard();
     FM_RESULT loadPlaylist();
     FM_RESULT loadNextPrint();
+    FM_RESULT loadPrintFromPlaylist(uint16_t num);
 
     static constexpr uint8_t blockSize = 32;
     uint16_t pointsNum() {return m_pointsNum;}
 
     GCode::GAbstractComm* readNextComm();
+
+    void changePlaylist(const std::vector<std::string>* newPlaylist, uint16_t actualPlsPos);
 
     std::vector<std::string>* getPlaylist_ptr() {return &playlist;};
     int16_t getCurrentPosition() {return curPlsPos;};
