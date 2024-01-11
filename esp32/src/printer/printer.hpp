@@ -46,9 +46,10 @@ public:
     void trigFiZero() {fiCenterTrigger = true;};
     void trigRZero() {rCenterTrigger = true;};
 
-    void pauseThread();
-    void resumeThread();
     void stop();
+    void pause(uint32_t time);
+    void pause();
+    void resume();
 
     uint16_t currentPrintPointNum() {return pointNum;}
 
@@ -83,6 +84,9 @@ private:
     Coord::PolarPoint currentPolarPosition{0, 0};
     Coord::PolarPoint targetPolarPosition{0, 0};
 
+    uint16_t pauseCounter{0};
+    static constexpr uint16_t infinitePause = 0xFFFF;
+
     uint32_t rTicksCounter{0};
     uint32_t fiTicksCounter{0};
 
@@ -99,6 +103,9 @@ private:
     float_t coordSysRotation = M_PI_2;
 
     void abortPoint();
+
+    void pauseThread();
+    void resumeThread();
 
     void setTIMPeriods(float_t rStepTime, float_t fiStepTime);
 

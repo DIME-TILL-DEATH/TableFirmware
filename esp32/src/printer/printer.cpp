@@ -130,7 +130,7 @@ void Printer::printRoutine()
                         {
                             printf("End of file.\r\n");
                             pauseThread();
-                           // Delay_Ms(g4Comm->pause()); //  ?????m_state = PrinterState::PAUSE;
+                           // Delay_Ms(g4Comm->pause()); 
                             resumeThread();
                         }
                         break;
@@ -293,6 +293,22 @@ void Printer::printRoutine()
             if(fiTicksCounter)
             {
                 setState(PrinterState::IDLE);
+            }
+            break;
+        }
+
+        case PrinterState::PAUSE:
+        {
+            if(pauseCounter != infinitePause)
+            {
+                if(pauseCounter>0)
+                {
+                    pauseCounter--;
+                }
+                else
+                {
+                    returnToPreviousState();
+                }
             }
             break;
         }
@@ -492,6 +508,25 @@ void Printer::stop()
 {
     abortPoint();
     setState(PrinterState::IDLE);
+}
+
+void Printer::pause(uint32_t time)
+{
+    setState(PrinterState::PAUSE);
+    pauseCounter = time;
+}
+
+void Printer::pause()
+{
+    pause(infinitePause);
+}
+
+void Printer::resume()
+{
+    if(m_state == PrinterState::PAUSE)
+    {
+        returnToPreviousState();
+    }
 }
 
 bool Printer::isPrinterFree()
