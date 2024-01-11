@@ -8,6 +8,7 @@
 Printer::Printer()
 {
     m_state = PrinterState::IDLE;
+    m_previousState = m_state;
 
     currentPosition.x = 0;
     currentPosition.y = 0;
@@ -74,8 +75,7 @@ void Printer::findCenter()
     gpio_intr_enable(PIN_ENDSTOP_R);
     gpio_intr_enable(PIN_ENDSTOP_FI);
 
-    m_state = PrinterState::SEARCH_FI_ZERO;
-
+    setState(PrinterState::SEARCH_FI_ZERO);
     resumeThread();
 }
 
@@ -90,10 +90,9 @@ void Printer::printRoutine()
     {
         case PrinterState::IDLE:
         {
-            // if(m_printJob.size()>0)
             if(nextComm != nullptr)
             {
-                m_state = PrinterState::HANDLE_COMMAND;
+                setState(PrinterState::HANDLE_COMMAND);
             }
             break;
         }
@@ -118,7 +117,7 @@ void Printer::printRoutine()
                             targetPosition.x = targetPosition.x * printScaleCoef;
                             targetPosition.y = targetPosition.y * printScaleCoef;
 
-                            m_state = PrinterState::SET_POINT;
+                            setState(m_state);
 
                             printf("point(%lf, %lf)", targetPosition.x, targetPosition.y);
                         }
@@ -143,7 +142,7 @@ void Printer::printRoutine()
             }
             else
             {
-                m_state = PrinterState::IDLE;
+                setState(PrinterState::IDLE);
             }
             break;
         }
@@ -152,7 +151,7 @@ void Printer::printRoutine()
         {
             if(targetPosition.x == currentPosition.x && currentPosition.y == targetPosition.y)
             {
-                m_state = PrinterState::HANDLE_COMMAND;
+                setState(PrinterState::HANDLE_COMMAND);
                 return; //skip point
             }
 
@@ -177,7 +176,7 @@ void Printer::printRoutine()
 
             pointNum++;
 
-            m_state = PrinterState::SET_STEP;
+            setState(PrinterState::SET_STEP);
             break;
         }
 
@@ -188,7 +187,7 @@ void Printer::printRoutine()
 
             if((fabs(targetPosition.x - currentPosition.x) < minErrX) && (fabs(targetPosition.y - currentPosition.y) < minErrY))
             {
-                m_state = PrinterState::HANDLE_COMMAND;
+                setState(PrinterState::HANDLE_COMMAND);
             }
             else
             {
@@ -224,7 +223,7 @@ void Printer::printRoutine()
                     currentPolarPosition.fi -= 2 * M_PI;
                 }
 
-                m_state = PrinterState::PRINTING;
+                setState(PrinterState::PRINTING);
             }
             break;
         }
@@ -233,7 +232,7 @@ void Printer::printRoutine()
         {
             if(rTicksCounter==0 && fiTicksCounter==0)
             {
-                m_state = PrinterState::SET_STEP;            
+                setState(PrinterState::SET_STEP);          
             }
 
             if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
@@ -241,7 +240,7 @@ void Printer::printRoutine()
                 rTicksCounter = 0;
                 fiTicksCounter = 0;
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-                m_state = PrinterState::HANDLE_COMMAND;
+                setState(PrinterState::HANDLE_COMMAND);
             }
             break;
         }
@@ -251,7 +250,7 @@ void Printer::printRoutine()
             if(fiCenterTrigger)
             {
                 setStep(-rMoveDiapason * 1.2, 0, 15); // 20% margin
-                m_state = PrinterState::SEARCH_R_ZERO;
+                setState(PrinterState::SEARCH_R_ZERO);
 
                 printf("Fi zeroing\r\n");
             }
@@ -262,7 +261,7 @@ void Printer::printRoutine()
         {
             if(rCenterTrigger)
             {
-                stop();
+                abortPoint();
 
                 gpio_intr_disable(PIN_ENDSTOP_R);
                 gpio_intr_disable(PIN_ENDSTOP_FI);
@@ -271,7 +270,7 @@ void Printer::printRoutine()
 
                 // TODO: find real center from sensor data, not fixed move
                 rTicksCounter = lengthToMotorTicks(7.5); //setStep()?
-                m_state = PrinterState::CORRECTING_CENTER;
+                setState(PrinterState::CORRECTING_CENTER);
             }
             break;
         }
@@ -284,7 +283,7 @@ void Printer::printRoutine()
                 currentPolarPosition.fi = 0;
 
                 setStep(0, coordSysRotation, 30);
-                m_state = PrinterState::IDLE;
+                setState(PrinterState::IDLE);
             }
             break;
         }
@@ -293,7 +292,7 @@ void Printer::printRoutine()
         {
             if(fiTicksCounter)
             {
-                m_state = PrinterState::IDLE;
+                setState(PrinterState::IDLE);
             }
             break;
         }
@@ -354,6 +353,19 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
     float_t fiPeriod = stepTimeInSec/fiTicksCounter;
 
     setTIMPeriods(rPeriod, fiPeriod);
+}
+void Printer::setState(PrinterState newState)
+{
+    if(newState != m_state) 
+    {
+        m_previousState = m_state;
+        m_state = newState;
+    }
+}
+
+void Printer::returnToPreviousState()
+{
+    m_state = m_previousState;
 }
 
 uint32_t Printer::radiansToMotorTicks(double_t radians)
@@ -470,10 +482,16 @@ void Printer::resumeThread()
     }
 }
 
-void Printer::stop()
+void Printer::abortPoint()
 {
     rTicksCounter = 0;
     fiTicksCounter = 0;
+}
+
+void Printer::stop()
+{
+    abortPoint();
+    setState(PrinterState::IDLE);
 }
 
 bool Printer::isPrinterFree()

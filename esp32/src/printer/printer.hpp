@@ -48,6 +48,7 @@ public:
 
     void pauseThread();
     void resumeThread();
+    void stop();
 
     uint16_t currentPrintPointNum() {return pointNum;}
 
@@ -64,7 +65,8 @@ private:
         SEARCH_R_ZERO,
         SEARCH_FI_ZERO,
         CORRECTING_CENTER,
-        ROTATE_COORD_SYS
+        ROTATE_COORD_SYS,
+        PAUSE
     }PrinterState;
 
     Pins::PrinterPins* printerPins;
@@ -72,7 +74,7 @@ private:
     IntervalTimer* rTimer;
     IntervalTimer* fiTimer;
 
-    PrinterState m_state;
+    PrinterState m_state, m_previousState;
     GCode::GAbstractComm* nextComm{nullptr};
 
     Coord::DecartPoint currentPosition{0, 0};
@@ -96,13 +98,16 @@ private:
     float_t speed = 40;//7.5;
     float_t coordSysRotation = M_PI_2;
 
+    void abortPoint();
+
     void setTIMPeriods(float_t rStepTime, float_t fiStepTime);
 
     uint32_t radiansToMotorTicks(double_t radians);
     uint32_t lengthToMotorTicks(double_t length);
 
     void setStep(double_t dR, double_t dFi, double_t stepTime);
-    void stop();
+    void setState(PrinterState newState);
+    void returnToPreviousState();
 
     static constexpr uint16_t printerQueueSize = 32;
 
