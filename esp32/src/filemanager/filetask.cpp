@@ -8,6 +8,8 @@
 #include "net/wifi.h"
 #include "net/tcpip.hpp"
 
+#include "requestactions.h"
+
 #include "projdefines.h"
 #include "printer/printsequence.hpp"
 #include "printer/printertask.hpp"
@@ -17,21 +19,51 @@
 
 FileManager fileManager;
 
+void sendPlaylistAnswer()
+{
+    NetComm::PlaylistCommand* answer = new NetComm::PlaylistCommand(0, Requests::Playlist::REQUEST_PLAYLIST, NetComm::ANSWER);
+    answer->playlist_ptr = fileManager.getPlaylist_ptr();
+    xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(10));
+}
+
+void sendPlaylistPositionAnswer()
+{
+    NetComm::PlaylistCommand* answer = new NetComm::PlaylistCommand(0, Requests::Playlist::REQUEST_PLAYLIST_POSITION, NetComm::ANSWER);
+    answer->curPlsPos = fileManager.getCurrentPosition();
+    xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(10));
+}
+
 void processNetRequest(NetComm::PlaylistCommand* recvComm)
 {
     switch(recvComm->action())
     {
-        case NetComm::PlaylistCommand::REQUEST_PLAYLIST:
+        case Requests::Playlist::REQUEST_PLAYLIST:
         {
-            NetComm::PlaylistCommand* answer = new NetComm::PlaylistCommand(0, NetComm::PlaylistCommand::REQUEST_PLAYLIST, NetComm::ANSWER);
-            answer->playlist_ptr = fileManager.getPlaylist_ptr();
-            answer->curPlsPos = fileManager.getCurrentPosition();
-            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(10));
+            sendPlaylistAnswer();
             break;
         }
 
-        case NetComm::PlaylistCommand::CHANGE_PLAYLIST:
+        case Requests::Playlist::REQUEST_PLAYLIST_POSITION:
         {
+            sendPlaylistPositionAnswer();
+            break;
+        }
+
+        case Requests::Playlist::CHANGE_PLAYLIST:
+        {
+            if(recvComm->playlist_ptr)
+            {
+                fileManager.changePlaylist(recvComm->playlist_ptr);
+                delete(recvComm->playlist_ptr);
+            }
+            sendPlaylistAnswer();        
+            break;
+        }
+
+        case Requests::Playlist::CHANGE_PLAYLIST_POSITION:
+        {
+            fileManager.changePlaylistPos(recvComm->curPlsPos);
+            sendPlaylistPositionAnswer();
             break;
         }
     }

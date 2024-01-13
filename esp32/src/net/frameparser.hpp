@@ -8,6 +8,7 @@
 #include "netcomm/abstractcommand.hpp"
 #include "netcomm/transportcommand.hpp"
 #include "netcomm/playlistcommand.hpp"
+#include "netcomm/filecommand.hpp"
 
 class FrameParser
 {
@@ -15,16 +16,18 @@ public:
     FrameParser(int socket);
     void processRecvData(uint8_t* frame, uint16_t len);
 
-    NetComm::AbstractCommand* lastRecvCommand() {return m_command;};
     std::vector<NetComm::AbstractCommand*> parsedCommands;
 private:
     int m_socket;
-    // uint8_t m_frameBuffer[2048];
-    // uint16_t m_bufferPos{0};
-    std::vector<uint8_t> recvData;
+
+    uint32_t curFrameBytesRecv{0}
+    std::vector<uint8_t> txBuffer;
+    std::vector<uint8_t> lastRecvFrame;
     FrameHeader lastRecvFrameHeader;
 
-    NetComm::AbstractCommand* m_command{nullptr};
+    void parseTransportActions();
+    void parsePlaylistActions();
+    void parseFileActions();
 };
 
 #endif

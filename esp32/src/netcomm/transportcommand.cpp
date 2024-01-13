@@ -2,7 +2,7 @@
 
 using namespace NetComm;
 
-TransportCommand::TransportCommand(uint8_t commId, TransportActions action, Direction dir)
+TransportCommand::TransportCommand(uint8_t commId, Requests::Transport action, Direction dir)
     : AbstractCommand(commId, dir)
 {
     m_commandType = CommandType::TRANSPORT_COMMAND;

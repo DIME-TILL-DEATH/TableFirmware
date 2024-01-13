@@ -5,6 +5,8 @@
 #include <vector>
 
 #include "abstractcommand.hpp"
+#include "requestactions.h"
+
 namespace NetComm
 {
 
@@ -12,26 +14,20 @@ namespace NetComm
 class PlaylistCommand : public AbstractCommand
 {
 public:
-    typedef enum 
-    {
-        REQUEST_PLAYLIST,
-        CHANGE_PLAYLIST
-    }PlaylistActions;
-
     struct 
     {
         uint16_t currentPoint;
         uint16_t printPoints;
     }progress;
 
-    PlaylistCommand(uint8_t commId, PlaylistActions action, Direction dir = Direction::REQUEST);
+    PlaylistCommand(uint8_t commId, Requests::Playlist action, Direction dir = Direction::REQUEST);
 
-    PlaylistActions action() {return m_action;};
+    Requests::Playlist action() {return m_action;};
 
     std::vector<std::string>* playlist_ptr;
-    int16_t curPlsPos{-1};
+    int16_t curPlsPos;
 private:
-    PlaylistActions m_action;
+    Requests::Playlist m_action;
 };
 
 };

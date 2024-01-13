@@ -10,7 +10,8 @@ typedef enum
 {
     ABSTRACT = 0,
     TRANSPORT_COMMAND,
-    PLAYLIST_COMMAND
+    PLAYLIST_COMMAND,
+    FILE_COMMAND
 }CommandType;
 
 typedef enum

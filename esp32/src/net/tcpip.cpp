@@ -73,6 +73,11 @@ static void socket_recv_task(const int sock)
                         xQueueSendToBack(fileReqQueue, &recvComm, pdMS_TO_TICKS(1000)); 
                         break;
                     }
+                    case NetComm::FILE_COMMAND:
+                    {
+                        xQueueSendToBack(netAnswQueue, &recvComm, pdMS_TO_TICKS(1000));
+                        break;
+                    }
                     default: ESP_LOGE(TAG, "Unknown command type"); break;
                 }
             }

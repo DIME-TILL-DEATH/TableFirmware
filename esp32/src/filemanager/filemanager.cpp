@@ -99,11 +99,30 @@ FM_RESULT FileManager::loadPlaylist()
     return FM_OK;
 }
 
-void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist, uint16_t actualPlsPos)
+void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
 {
     playlist = *newPlaylist;
-    curPlsPos = actualPlsPos;
+    
+    FILE* playlistFile;
+    playlistFile = fopen(MOUNT_POINT"/playlist.pls", "w");
 
+    if(playlistFile == NULL)
+    {
+        ESP_LOGE(FM_TAG, "Open playlist failed, res = %d");
+        return;
+    }
+
+    for(auto it=playlist.begin(); it!=playlist.end(); it++)
+    {
+        fputs((*it).data(), playlistFile);
+    }
+    ESP_LOGI(FM_TAG, "New playlist wirtten");
+    fclose(playlistFile);
+}
+
+void FileManager::changePlaylistPos(int16_t newPos)
+{
+    if(newPos > -1) curPlsPos = newPos;
 }
 
 FM_RESULT FileManager::loadNextPrint()

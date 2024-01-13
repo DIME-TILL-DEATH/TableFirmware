@@ -35,10 +35,13 @@ public:
 
     GCode::GAbstractComm* readNextComm();
 
-    void changePlaylist(const std::vector<std::string>* newPlaylist, uint16_t actualPlsPos);
+    void changePlaylist(const std::vector<std::string>* newPlaylist);
+    void changePlaylistPos(int16_t newPos);
 
     std::vector<std::string>* getPlaylist_ptr() {return &playlist;};
     int16_t getCurrentPosition() {return curPlsPos;};
+
+    constexpr static std::string mountPoint = "/sdcard/";
 private:
     
     FILE* currentPrintFile;

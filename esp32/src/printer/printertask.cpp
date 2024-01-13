@@ -1,5 +1,6 @@
 #include "printertask.hpp"
 
+#include "requestactions.h"
 #include "projdefines.h"
 #include "printer.hpp"
 #include "printsequence.hpp"
@@ -13,32 +14,32 @@ void processNetRequest(NetComm::TransportCommand* command)
 {
     switch(command->action())
     {
-        case NetComm::TransportCommand::PREVIOUS_PRINT:
+        case Requests::Transport::PREVIOUS_PRINT:
         {
             break;
         }
 
-        case NetComm::TransportCommand::PAUSE_PRINTING:
+        case Requests::Transport::PAUSE_PRINTING:
         {
             
             break;
         }
 
-        case NetComm::TransportCommand::NEXT_PRINT:
+        case Requests::Transport::NEXT_PRINT:
         {
             break;
         }
 
-        case NetComm::TransportCommand::REQUEST_PROGRESS:
+        case Requests::Transport::REQUEST_PROGRESS:
         {
-            NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, NetComm::TransportCommand::REQUEST_PROGRESS, NetComm::ANSWER);
+            NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::REQUEST_PROGRESS, NetComm::ANSWER);
             answer->progress.currentPoint = printer.currentPrintPointNum();
             answer->progress.printPoints = fileManager.pointsNum();
             xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(10));
             break;
         }
 
-        case NetComm::TransportCommand::SET_PRINT:
+        case Requests::Transport::SET_PRINT:
         {
             break;
         }
