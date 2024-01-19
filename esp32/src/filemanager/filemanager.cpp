@@ -36,7 +36,7 @@ FM_RESULT FileManager::connectSDCard()
     dir = opendir(MOUNT_POINT"/");
     if(dir == NULL)
     {
-        ESP_LOGE(FM_TAG, "f_opendir() failed");
+        ESP_LOGE(FM_TAG, "opendir() failed");
         return FM_ERROR;
     }
 
@@ -55,7 +55,7 @@ FM_RESULT FileManager::connectSDCard()
         }
         else if(entry->d_type == DT_DIR)
         {
-            printf("    DIR===%s\n", entry->d_name);
+            printf("    DIR=%s\n", entry->d_name);
             totalDirs++;
         }
     }
@@ -69,8 +69,10 @@ FM_RESULT FileManager::connectSDCard()
 
 FM_RESULT FileManager::loadPlaylist()
 {
-    FILE* playlistFile;
-    playlistFile = fopen(MOUNT_POINT"/playlist.pls", "r");
+    std::string fullFileName;
+    fullFileName = mountPoint + playlistsDir + "playlist.pls";
+
+    FILE* playlistFile = fopen(fullFileName.c_str(), "r");
 
     if(playlistFile == NULL)
     {
@@ -103,8 +105,10 @@ void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
 {
     playlist = *newPlaylist;
     
-    FILE* playlistFile;
-    playlistFile = fopen(MOUNT_POINT"/playlist.pls", "w");
+    std::string fullFileName;
+    fullFileName = mountPoint + playlistsDir + "playlist.pls";
+
+    FILE* playlistFile = fopen(fullFileName.c_str(), "w");
 
     if(playlistFile == NULL)
     {
@@ -153,7 +157,7 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     }
 
     std::string fullFileName;
-    fullFileName = std::string(MOUNT_POINT"/") + currentFileName;
+    fullFileName = mountPoint + libraryDir + currentFileName;
     currentPrintFile = fopen(fullFileName.c_str(), "r");
     if(currentPrintFile == NULL)
     {

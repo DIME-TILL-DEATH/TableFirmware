@@ -20,7 +20,7 @@ public:
 private:
     int m_socket;
 
-    uint32_t curFrameBytesRecv{0}
+    uint32_t curFrameBytesRecv{0};
     std::vector<uint8_t> txBuffer;
     std::vector<uint8_t> lastRecvFrame;
     FrameHeader lastRecvFrameHeader;

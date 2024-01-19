@@ -5,6 +5,8 @@
 #include "esp_log.h"
 
 #include "ff.h"
+#include <dirent.h>
+#include <stdio.h>
 
 #include "filemanager/filemanager.hpp"
 #include "frames.h"
@@ -15,6 +17,7 @@
 #include "lwip/sys.h"
 
 static const char *TAG = "NET ANSWER";
+#define TX_BUFFER_SIZE 1024
 
 void sendData(int socket, void* txBuffer, size_t len)
 {
@@ -28,35 +31,56 @@ void sendData(int socket, void* txBuffer, size_t len)
     }
 }
 
+void sendLongVector(int socket, FrameHeader_uni& answerFrameHeader, std::vector<std::string>* data)
+{
+    char txBuffer[TX_BUFFER_SIZE];
+
+    uint16_t len = sizeof(FrameHeader);
+
+    for(auto it = data->begin(); it!=data->end(); ++it)
+    {
+        len += (*it).size();
+    }
+
+    answerFrameHeader.structData.frameSize = len;
+    
+    int parts = len / TX_BUFFER_SIZE + 1;
+    
+    memcpy(txBuffer, answerFrameHeader.rawData, sizeof(FrameHeader));
+    auto curItem = data->begin();
+    int curSendBytes = sizeof(FrameHeader);
+
+    for(int i=0; i<parts; i++)
+    {
+        while((curItem != data->end()) && ((curSendBytes + (*curItem).size()) < TX_BUFFER_SIZE))
+        {
+            memcpy(&txBuffer[curSendBytes], (*curItem).data(), (*curItem).size());
+            curSendBytes += (*curItem).size();
+            curItem++;
+        }
+        ESP_LOGI("Answer", "Send part: %d, len: %d", i, curSendBytes);
+        sendData(socket, txBuffer, curSendBytes);
+        curSendBytes = 0;
+    }
+}
+
 void processTransportCommand(NetComm::TransportCommand* transportAnswer, int socket)
 {
     FrameHeader_uni answerFrame;
     memset(answerFrame.rawData, 0, sizeof(FrameHeader));
     answerFrame.structData.frameType = FrameType::TRANSPORT_ACTIONS;
 
-    char txBuffer[128];
- 
     switch(transportAnswer->action())
     {
-        case Requests::Transport::PREVIOUS_PRINT:
-        {
-            break;
-        }
-
         case Requests::Transport::PAUSE_PRINTING:
         {
             
             break;
         }
 
-        case Requests::Transport::NEXT_PRINT:
-        {
-            break;
-        }
-
         case Requests::Transport::REQUEST_PROGRESS:
         {
-            ESP_LOGI("Answer", "ready to answer, Cur point: %d, All points: %d", transportAnswer->progress.currentPoint, transportAnswer->progress.printPoints);
+           // ESP_LOGI("Answer", "ready to answer, Cur point: %d, All points: %d", transportAnswer->progress.currentPoint, transportAnswer->progress.printPoints);
             
             answerFrame.structData.actionType = (uint8_t)Requests::Transport::REQUEST_PROGRESS;
             answerFrame.structData.frameSize = sizeof(FrameHeader);
@@ -74,20 +98,18 @@ void processTransportCommand(NetComm::TransportCommand* transportAnswer, int soc
     }
 }
 
-#define TX_PLAYLIST_BUFFER_SIZE 1024
 void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket)
 {   
     FrameHeader_uni answerFrameHeader;
     memset(answerFrameHeader.rawData, 0, sizeof(FrameHeader));
     answerFrameHeader.structData.frameType = FrameType::PLAYLIST_ACTIONS;
 
-    char txBuffer[TX_PLAYLIST_BUFFER_SIZE];
+    char txBuffer[TX_BUFFER_SIZE];
 
     switch(playlistAnswer->action())
     {
         case Requests::Playlist::REQUEST_PLAYLIST:
         {
-            uint16_t len = 0;
             std::vector<std::string>* playlist = playlistAnswer->playlist_ptr;
 
             if(!playlist)
@@ -95,41 +117,16 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
                 ESP_LOGE(TAG, "Playlis answer, pointer to playlis unavaliable");
                 return;
             }
-
-            len += sizeof(FrameHeader);
-            for(auto it = playlist->begin(); it!=playlist->end(); ++it)
-            {
-                len += (*it).size();
-            }
-
             answerFrameHeader.structData.actionType = (uint8_t)Requests::Playlist::REQUEST_PLAYLIST;
-            answerFrameHeader.structData.frameSize = len;
-            
-            int parts = len / TX_PLAYLIST_BUFFER_SIZE + 1;
-            ESP_LOGI("Answer", "ready to answer playlist, frame len: %d, parts: %d", len, parts);
-            
-            memcpy(txBuffer, answerFrameHeader.rawData, sizeof(FrameHeader));
-            auto curItem = playlist->begin();
-            int curSendBytes = sizeof(FrameHeader);
 
-            for(int i=0; i<parts; i++)
-            {
-                while((curItem != playlist->end()) && ((curSendBytes + (*curItem).size()) < TX_PLAYLIST_BUFFER_SIZE))
-                {
-                    memcpy(&txBuffer[curSendBytes], (*curItem).data(), (*curItem).size());
-                    curSendBytes += (*curItem).size();
-                    curItem++;
-                }
-                ESP_LOGI("Answer", "Send part: %d, len: %d", i, curSendBytes);
-                sendData(socket, txBuffer, curSendBytes);
-                curSendBytes = 0;
-            }
+            sendLongVector(socket, answerFrameHeader, playlist);
+
             break;
         }
 
         case Requests::Playlist::REQUEST_PLAYLIST_POSITION:
         {
-            ESP_LOGI("Answer", "ready to answer, playlist position:%d", playlistAnswer->curPlsPos);
+            //ESP_LOGI("Answer", "ready to answer, playlist position:%d", playlistAnswer->curPlsPos);
             answerFrameHeader.structData.actionType = (uint8_t)Requests::Playlist::REQUEST_PLAYLIST_POSITION;
             answerFrameHeader.structData.frameSize = sizeof(FrameHeader);
             answerFrameHeader.structData.data0 = playlistAnswer->curPlsPos;
@@ -160,7 +157,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
     {
         case Requests::File::GET_FILE:
         {
-            std::string fileName = fileAnswer->fileName;
+            std::string fileName = FileManager::mountPoint + FileManager::libraryDir + fileAnswer->path;
             FILE* reqFile = fopen(fileName.c_str(), "r");
             if(reqFile)
             {
@@ -169,7 +166,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
                 ESP_LOGI(TAG, "File  %s opened. Size: %d", fileName.c_str(), fileSize);
                 fseek(reqFile, 0 , SEEK_SET); 
 
-                fileName.erase(0, FileManager::mountPoint.size());
+                //fileName.erase(0, FileManager::mountPoint.size());
 
                 answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FILE;
                 answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size() + fileSize;
@@ -193,10 +190,65 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
             }
             else
             {
-                ESP_LOGE(TAG, "File request. Can't open print file %s", fileName.c_str());
+                ESP_LOGE(TAG, "File request. Can't open file %s", fileName.c_str());
+                answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FILE;
+                answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size();
+                answerFrameHeader.structData.data0 = fileName.size();
+                answerFrameHeader.structData.data1 = -1;
+
+                char buffer[512];
+                memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
+                memcpy(&buffer[sizeof(FrameHeader)], fileName.c_str(), fileName.size());
+
+                sendData(socket, buffer, sizeof(FrameHeader) + fileName.size());
                 return;
             }
 
+            break;
+        }
+
+        case Requests::File::GET_FOLDER_CONTENT:
+        {
+            // std::string dirPath = FileManager::mountPoint + fileAnswer->path;
+            std::string dirPath = fileAnswer->path;
+            DIR* dir = opendir(dirPath.c_str());
+            if(dir == NULL)
+            {
+                ESP_LOGE(TAG, "opendir() failed, path: %s", dirPath.c_str());
+                return;
+            }
+
+            dirent *entry;
+
+            uint32_t totalFiles = 0;
+            uint32_t totalDirs = 0;
+            std::vector<std::string> result;
+            result.push_back(dirPath + std::string("*"));
+
+            while ((entry = readdir(dir)) != NULL) 
+            {
+                if(entry->d_type == DT_REG)
+                {
+                    result.push_back(entry->d_name + std::string("\r"));
+                    totalFiles++;
+                }
+                else if(entry->d_type == DT_DIR)
+                {
+                    char rootName[128] = "System volume information";
+                    if(strcmp(entry->d_name, rootName))
+                    {
+                        result.push_back(std::string("DIR|") + entry->d_name + std::string("\r"));
+                        totalDirs++;
+                    }
+                }
+            }
+            answerFrameHeader.structData.data0 = totalDirs;
+            answerFrameHeader.structData.data1 = totalFiles;
+            answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FOLDER_CONTENT;
+
+            sendLongVector(socket, answerFrameHeader, &result);
+
+            closedir(dir);
             break;
         }
     }

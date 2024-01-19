@@ -14,7 +14,7 @@
 #include "netcomm/abstractcommand.hpp"
 
 #define PRINTER_COMM_QUEUE_SIZE 32
-#define NET_COMM_QUEUE_SIZE 8
+#define NET_COMM_QUEUE_SIZE 32
 
 QueueHandle_t gcodesQueue, printReqQueue, fileReqQueue, netAnswQueue;
 

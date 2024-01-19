@@ -119,7 +119,7 @@ void Printer::printRoutine()
 
                             setState(PrinterState::SET_POINT);
 
-                            printf("point(%lf, %lf)", targetPosition.x, targetPosition.y);
+                         //   printf("point(%lf, %lf)", targetPosition.x, targetPosition.y);
                         }
                         break;
                     }
@@ -165,7 +165,9 @@ void Printer::printRoutine()
             stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2))) / speed;
 
             // INFO block==========
-                printf(", point num: %d\r\n", pointNum);
+           //     printf(", point num: %d\r\n", pointNum);
+
+           
 //                printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
 //                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
 //                printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));

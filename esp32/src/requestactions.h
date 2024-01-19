@@ -5,8 +5,6 @@ namespace Requests
 {
 enum class Transport
 {
-    PREVIOUS_PRINT=0,
-    NEXT_PRINT,
     PAUSE_PRINTING,
     SET_PRINT,
     REQUEST_PROGRESS
@@ -22,7 +20,8 @@ enum class Playlist
 
 enum class File
 {
-    GET_FILE
+    GET_FILE,
+    GET_FOLDER_CONTENT
 };
 
 }
@@ -43,7 +42,8 @@ enum class Playlist
 
 enum class File
 {
-    REQUESTED_FILE
+    REQUESTED_FILE,
+    REQUESTED_FOLDER
 };
 
 }

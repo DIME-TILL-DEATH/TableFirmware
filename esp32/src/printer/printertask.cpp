@@ -14,19 +14,9 @@ void processNetRequest(NetComm::TransportCommand* command)
 {
     switch(command->action())
     {
-        case Requests::Transport::PREVIOUS_PRINT:
-        {
-            break;
-        }
-
         case Requests::Transport::PAUSE_PRINTING:
         {
             
-            break;
-        }
-
-        case Requests::Transport::NEXT_PRINT:
-        {
             break;
         }
 

@@ -14,7 +14,7 @@ class FileCommand : public AbstractCommand
 public:
     FileCommand(uint8_t commId, Requests::File action, Direction dir = Direction::REQUEST);
 
-    std::string fileName;
+    std::string path;
 
     Requests::File action() {return m_action;};
 private:

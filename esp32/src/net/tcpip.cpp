@@ -54,7 +54,7 @@ static void socket_recv_task(const int sock)
         } 
         else 
         {    
-            ESP_LOGI(TAG, "Recieved frame");        
+            //ESP_LOGI(TAG, "Recieved frame");        
             frameParser->processRecvData(rx_buffer, len);           
                         
             while(frameParser->parsedCommands.size()>0)
@@ -75,7 +75,7 @@ static void socket_recv_task(const int sock)
                     }
                     case NetComm::FILE_COMMAND:
                     {
-                        xQueueSendToBack(netAnswQueue, &recvComm, pdMS_TO_TICKS(1000));
+                        xQueueSendToBack(netAnswQueue, &recvComm, pdMS_TO_TICKS(10000));
                         break;
                     }
                     default: ESP_LOGE(TAG, "Unknown command type"); break;
@@ -179,7 +179,7 @@ static void tcp_task(void *pvParameters)
         }
         ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
 
-        xTaskCreatePinnedToCore(answer_task, "tcp_answer", 4096, (void*)&sock, PRIORITY_TCP_ANSWER_TASK, &answerTaskHandle, 0);
+        xTaskCreatePinnedToCore(answer_task, "tcp_answer", 8192, (void*)&sock, PRIORITY_TCP_ANSWER_TASK, &answerTaskHandle, 0);
         socket_recv_task(sock);     
         vTaskDelete(answerTaskHandle);
     }
@@ -191,5 +191,5 @@ CLEAN_UP:
 
 void TCPIP_Init(void)
 {
-    xTaskCreatePinnedToCore(tcp_task, "tcp_server", 4096, NULL, PRIORITY_TCP_RECIEVE_TASK, NULL, 0);
+    xTaskCreatePinnedToCore(tcp_task, "tcp_server", 8192, NULL, PRIORITY_TCP_RECIEVE_TASK, NULL, 0);
 }

@@ -42,6 +42,8 @@ public:
     int16_t getCurrentPosition() {return curPlsPos;};
 
     constexpr static std::string mountPoint = "/sdcard/";
+    constexpr static std::string playlistsDir = "playlists/";
+    constexpr static std::string libraryDir = "library/";
 private:
     
     FILE* currentPrintFile;

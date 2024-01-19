@@ -71,7 +71,7 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
 void FrameParser::parseTransportActions()
 {
     NetComm::TransportCommand* command = new NetComm::TransportCommand(0, (Requests::Transport)lastRecvFrameHeader.actionType);
-    ESP_LOGI(TAG, "Formed new transport req, act type: %d", lastRecvFrameHeader.actionType);
+    //ESP_LOGI(TAG, "Formed new transport req, act type: %d", lastRecvFrameHeader.actionType);
     parsedCommands.push_back(command);
 }
 
@@ -83,13 +83,13 @@ void FrameParser::parsePlaylistActions()
     {
         case Requests::Playlist::REQUEST_PLAYLIST:
         {
-            ESP_LOGI(TAG, "Playlist request formed");
+            //ESP_LOGI(TAG, "Playlist request formed");
             break;
         }
 
         case Requests::Playlist::REQUEST_PLAYLIST_POSITION:
         {
-            ESP_LOGI(TAG, "Playlist request position formed");
+            //ESP_LOGI(TAG, "Playlist request position formed");
             break;    
         }
 
@@ -114,42 +114,28 @@ void FrameParser::parsePlaylistActions()
                     partSize = lastRecvFrame.size()%PLAYLIST_RX_BUFFER;
                 }
 
-                // ESP_LOGI(TAG, "Buffer part, size: %d", lastRecvFrame.size());
                 memcpy(&buffer[charRemainded], lastRecvFrame.data(), partSize);
                 lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+partSize);
-                // ESP_LOGI(TAG, "splitted, size: %d", lastRecvFrame.size());
 
                 char* str_ptr = &buffer[0];
                 char* foundName;
                 size_t charsCopied = 0;
 
-                // printf("analyse:");
-                // for(int i=0; i<PLAYLIST_RX_BUFFER*2; i++)
-                //     printf("%c", buffer[i]);
-
-                // printf("\r\n");
                 int delimitersCount = 0;
                 while((foundName = strsep(&str_ptr, "|")) != NULL)
-                {
-                    // ESP_LOGI(TAG, "1");
-                    
+                {  
                     std::string fileName(foundName);
                     
                     if(fileName.find(0xFF) == std::string::npos)
                     {
-                        // ESP_LOGI(TAG, "Finded name: %s", foundName);
                         newPlaylist->push_back(fileName + "\r\n");
                         charsCopied += strlen(foundName);
                         delimitersCount++;
                     }
-                    // else
-                    // {
-                    //     ESP_LOGI(TAG, "Dropped");
-                    // }
+
                 }
                 charRemainded = charRemainded + partSize - charsCopied - delimitersCount;
 
-                // ESP_LOGI(TAG, "Chars copied: %d chars remainded: %d", charsCopied, charRemainded);
                 memcpy(&buffer[0], &buffer[charsCopied+delimitersCount], charRemainded);
                 memset(&buffer[charRemainded], 0XFF, PLAYLIST_RX_BUFFER*2-charRemainded);
             }
@@ -174,6 +160,10 @@ void FrameParser::parseFileActions()
 {
     switch((Requests::File)lastRecvFrameHeader.actionType)
     {
+        case Requests::File::GET_FOLDER_CONTENT:
+        {
+            //same as get file: process next:
+        }
         case Requests::File::GET_FILE:
         {
             char buffer[1024];
@@ -183,7 +173,7 @@ void FrameParser::parseFileActions()
             memcpy(buffer, lastRecvFrame.data(), lastRecvFrame.size());
 
             NetComm::FileCommand* command = new NetComm::FileCommand(0, (Requests::File)lastRecvFrameHeader.actionType);
-            command->fileName = FileManager::mountPoint + std::string(buffer);
+            command->path = std::string(buffer);
 
             if(command) parsedCommands.push_back(command);
 
