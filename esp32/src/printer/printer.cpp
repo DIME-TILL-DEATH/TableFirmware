@@ -167,7 +167,7 @@ void Printer::printRoutine()
             // INFO block==========
            //     printf(", point num: %d\r\n", pointNum);
 
-           
+
 //                printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
 //                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
 //                printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
@@ -405,7 +405,7 @@ void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
         fiCorretionCoef = (float_t)minRPeriod / (float_t)timerRPeriod;
         timerRPeriod = minRPeriod;
         timerFiPeriod *=  fiCorretionCoef;
-        printf("Fi correction, coef: %lf\r\n", fiCorretionCoef);
+        //printf("Fi correction, coef: %lf\r\n", fiCorretionCoef);
     }
 
     if(timerFiPeriod < minFiPeriod)
@@ -414,7 +414,7 @@ void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
         rCorretionCoef = (float_t)minFiPeriod / (float_t)timerFiPeriod;
         timerFiPeriod = minFiPeriod;
         timerRPeriod *=  rCorretionCoef;
-        printf("R correction, coef: %lf\r\n", rCorretionCoef);
+        //printf("R correction, coef: %lf\r\n", rCorretionCoef);
     }
 
     rTimer->setInterval(timerRPeriod);

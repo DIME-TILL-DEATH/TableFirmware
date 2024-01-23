@@ -20,7 +20,7 @@ public:
 private:
     int m_socket;
 
-    uint32_t curFrameBytesRecv{0};
+    int32_t curFrameBytesRecv{0};
     std::vector<uint8_t> txBuffer;
     std::vector<uint8_t> lastRecvFrame;
     FrameHeader lastRecvFrameHeader;
@@ -28,6 +28,7 @@ private:
     void parseTransportActions();
     void parsePlaylistActions();
     void parseFileActions();
+    int32_t fileWrite(std::string fileName, const char* writeType);
 };
 
 #endif

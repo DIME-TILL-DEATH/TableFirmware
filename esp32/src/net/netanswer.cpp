@@ -58,7 +58,7 @@ void sendLongVector(int socket, FrameHeader_uni& answerFrameHeader, std::vector<
             curSendBytes += (*curItem).size();
             curItem++;
         }
-        ESP_LOGI("Answer", "Send part: %d, len: %d", i, curSendBytes);
+        //ESP_LOGI("Answer", "Send part: %d, len: %d", i, curSendBytes);
         sendData(socket, txBuffer, curSendBytes);
         curSendBytes = 0;
     }
@@ -119,6 +119,15 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
             }
             answerFrameHeader.structData.actionType = (uint8_t)Requests::Playlist::REQUEST_PLAYLIST;
 
+            printf("Playlist: ");
+            for(auto it=playlist->begin(); it!=playlist->end(); it++)
+            {
+                printf("%s  ", (*it).c_str());
+            }
+            printf("\r\n");
+
+            sendLongVector(socket, answerFrameHeader, playlist);
+            //ESP_LOGI("Answer", "Send pls req answer, count: %d", playlist->size());
             sendLongVector(socket, answerFrameHeader, playlist);
 
             break;
@@ -157,16 +166,14 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
     {
         case Requests::File::GET_FILE:
         {
-            std::string fileName = FileManager::mountPoint + FileManager::libraryDir + fileAnswer->path;
+            std::string fileName = fileAnswer->path;
             FILE* reqFile = fopen(fileName.c_str(), "r");
             if(reqFile)
             {
                 fseek(reqFile, 0 , SEEK_END);
                 long fileSize = ftell(reqFile);
-                ESP_LOGI(TAG, "File  %s opened. Size: %d", fileName.c_str(), fileSize);
+                ESP_LOGI(TAG, "File  %s opened. Size: %d, sending answer", fileName.c_str(), fileSize);
                 fseek(reqFile, 0 , SEEK_SET); 
-
-                //fileName.erase(0, FileManager::mountPoint.size());
 
                 answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FILE;
                 answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size() + fileSize;
@@ -183,7 +190,6 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
                 {
                     bytesReaded = fread(buffer, 1, 2048, reqFile);
                     sendData(socket, buffer, bytesReaded);
-                    // ESP_LOGI(TAG, "Bytes sended: %d", bytesReaded);
                 }while(bytesReaded>0);
 
                 fclose(reqFile);
@@ -209,7 +215,6 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
 
         case Requests::File::GET_FOLDER_CONTENT:
         {
-            // std::string dirPath = FileManager::mountPoint + fileAnswer->path;
             std::string dirPath = fileAnswer->path;
             DIR* dir = opendir(dirPath.c_str());
             if(dir == NULL)
@@ -217,6 +222,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
                 ESP_LOGE(TAG, "opendir() failed, path: %s", dirPath.c_str());
                 return;
             }
+            ESP_LOGI(TAG, "Dir  %s opened, sending answer", dirPath.c_str());
 
             dirent *entry;
 
@@ -249,6 +255,26 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
             sendLongVector(socket, answerFrameHeader, &result);
 
             closedir(dir);
+            break;
+        }
+
+        case Requests::File::FILE_CREATE:
+        {
+            // same as FILE_APPEND_DATA:
+        }
+
+        case Requests::File::FILE_APPEND_DATA:
+        {
+            std::string fileName = fileAnswer->path;
+            answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FILE;
+            answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size();
+            answerFrameHeader.structData.data0 = fileName.size();
+            answerFrameHeader.structData.data1 = fileAnswer->dataProcessed;
+
+            char buffer[2048];
+            memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
+            memcpy(&buffer[sizeof(FrameHeader)], fileName.c_str(), fileName.size());
+            sendData(socket, buffer, sizeof(FrameHeader)+fileName.size());
             break;
         }
     }

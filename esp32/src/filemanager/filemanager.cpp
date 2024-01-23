@@ -119,6 +119,7 @@ void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
     for(auto it=playlist.begin(); it!=playlist.end(); it++)
     {
         fputs((*it).data(), playlistFile);
+        //printf("%s  ", (*it).c_str());
     }
     ESP_LOGI(FM_TAG, "New playlist wirtten");
     fclose(playlistFile);

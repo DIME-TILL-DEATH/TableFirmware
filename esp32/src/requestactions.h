@@ -21,7 +21,9 @@ enum class Playlist
 enum class File
 {
     GET_FILE,
-    GET_FOLDER_CONTENT
+    GET_FOLDER_CONTENT,
+    FILE_CREATE,
+    FILE_APPEND_DATA
 };
 
 }

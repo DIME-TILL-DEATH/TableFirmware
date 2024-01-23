@@ -15,6 +15,7 @@ public:
     FileCommand(uint8_t commId, Requests::File action, Direction dir = Direction::REQUEST);
 
     std::string path;
+    int32_t dataProcessed{0};
 
     Requests::File action() {return m_action;};
 private:

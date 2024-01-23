@@ -11,6 +11,7 @@ static const char *TAG = "FRAME PARSER";
 FrameParser::FrameParser(int socket)
 {
     m_socket = socket;
+    lastRecvFrameHeader.frameType = UNDEFINED;
     lastRecvFrameHeader.frameSize = 0;
     ESP_LOGI(TAG, "new frame parser created, parent socket: %d\r\n", m_socket);
 }
@@ -158,26 +159,55 @@ void FrameParser::parsePlaylistActions()
 
 void FrameParser::parseFileActions()
 {
+    char buffer[512];
+    memset(buffer, 0, 512);
+
+    NetComm::FileCommand* command = new NetComm::FileCommand(0, (Requests::File)lastRecvFrameHeader.actionType);
+
+    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
+    memcpy(buffer, lastRecvFrame.data(), lastRecvFrameHeader.data0);
+    // memcpy(buffer, lastRecvFrame.data(), lastRecvFrame.size());
+
+    std::string fullFileName = std::string(buffer);
+    command->path = fullFileName;
+
     switch((Requests::File)lastRecvFrameHeader.actionType)
     {
-        case Requests::File::GET_FOLDER_CONTENT:
+        case Requests::File::FILE_CREATE:
         {
-            //same as get file: process next:
-        }
-        case Requests::File::GET_FILE:
-        {
-            char buffer[1024];
-            memset(buffer, 0, 1024);
-
-            lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-            memcpy(buffer, lastRecvFrame.data(), lastRecvFrame.size());
-
-            NetComm::FileCommand* command = new NetComm::FileCommand(0, (Requests::File)lastRecvFrameHeader.actionType);
-            command->path = std::string(buffer);
-
-            if(command) parsedCommands.push_back(command);
-
+            command->dataProcessed = fileWrite(fullFileName, "w");
             break;
         }
+
+        case Requests::File::FILE_APPEND_DATA:
+        {
+            command->dataProcessed = fileWrite(fullFileName, "a");
+            break;
+        }
+        default: {}
+    }
+
+    if(command) parsedCommands.push_back(command);
+}
+
+// TODO: move to file manager. Static function
+int32_t FrameParser::fileWrite(std::string fileName, const char* writeType)
+{
+    FILE* file = fopen(fileName.c_str(), writeType);
+    if(file != NULL)
+    {
+        uint32_t fileDataSize = lastRecvFrameHeader.data1;
+        const void* fileData_ptr = lastRecvFrame.data() + lastRecvFrameHeader.data0;
+        fwrite(fileData_ptr, sizeof(uint8_t), fileDataSize, file);
+
+        ESP_LOGI(TAG, "Part of file %s wirtten", fileName.c_str());
+        fclose(file);
+
+        return fileDataSize;
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Error opening file to append %s", fileName.c_str());
+        return -1;
     }
 }
