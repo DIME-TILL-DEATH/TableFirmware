@@ -6,6 +6,8 @@
 #include "frameparser.hpp"
 #include "filemanager/filemanager.hpp"
 
+#include "firmware.hpp"
+
 static const char *TAG = "FRAME PARSER";
 
 FrameParser::FrameParser(int socket)
@@ -55,6 +57,11 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
                 {
                     parseFileActions();
                     break;
+                }
+
+                case FIRMWARE_ACTIONS:
+                {
+                    parseFirmwareActions();
                 }
                 default: ESP_LOGE(TAG, "Unknown frame type");
             }
@@ -166,7 +173,6 @@ void FrameParser::parseFileActions()
 
     lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
     memcpy(buffer, lastRecvFrame.data(), lastRecvFrameHeader.data0);
-    // memcpy(buffer, lastRecvFrame.data(), lastRecvFrame.size());
 
     std::string fullFileName = std::string(buffer);
     command->path = fullFileName;
@@ -200,7 +206,7 @@ int32_t FrameParser::fileWrite(std::string fileName, const char* writeType)
         const void* fileData_ptr = lastRecvFrame.data() + lastRecvFrameHeader.data0;
         fwrite(fileData_ptr, sizeof(uint8_t), fileDataSize, file);
 
-        ESP_LOGI(TAG, "Part of file %s wirtten", fileName.c_str());
+        ESP_LOGI(TAG, "Part of file %s wirtten, part size %d:", fileName.c_str(), fileDataSize);
         fclose(file);
 
         return fileDataSize;
@@ -209,5 +215,27 @@ int32_t FrameParser::fileWrite(std::string fileName, const char* writeType)
     {
         ESP_LOGE(TAG, "Error opening file to append %s", fileName.c_str());
         return -1;
+    }
+}
+
+void FrameParser::parseFirmwareActions()
+{
+    switch((Requests::Firmware)lastRecvFrameHeader.actionType)
+    {
+    case Requests::Firmware::FIRMWARE_VERSION:
+    {
+        break;
+    }
+
+    case Requests::Firmware::FIRMWARE_UPLOAD:
+    {
+        break;
+    }
+
+    case Requests::Firmware::FIRMWARE_UPDATE:
+    {
+        FW_DoFirmwareUpdate();
+        break;
+    }
     }
 }

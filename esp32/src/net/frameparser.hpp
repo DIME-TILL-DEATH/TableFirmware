@@ -28,7 +28,7 @@ private:
     void parseTransportActions();
     void parsePlaylistActions();
     void parseFileActions();
-    int32_t fileWrite(std::string fileName, const char* writeType);
+    void parseFirmwareActions();
 };
 
 #endif

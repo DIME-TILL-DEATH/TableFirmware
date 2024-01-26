@@ -41,6 +41,8 @@ public:
     std::vector<std::string>* getPlaylist_ptr() {return &playlist;};
     int16_t getCurrentPosition() {return curPlsPos;};
 
+    static int32_t fileWrite(std::string fileName, const char* writeType, void* data_ptr, size_t dataSize);
+
     constexpr static std::string mountPoint = "/sdcard/";
     constexpr static std::string playlistsDir = "playlists/";
     constexpr static std::string libraryDir = "library/";

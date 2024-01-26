@@ -266,7 +266,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
         case Requests::File::FILE_APPEND_DATA:
         {
             std::string fileName = fileAnswer->path;
-            answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FILE;
+            answerFrameHeader.structData.actionType = (uint8_t)Requests::File::FILE_APPEND_DATA;
             answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size();
             answerFrameHeader.structData.data0 = fileName.size();
             answerFrameHeader.structData.data1 = fileAnswer->dataProcessed;

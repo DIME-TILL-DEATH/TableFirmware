@@ -8,6 +8,8 @@
 #include "net/tcpip.hpp"
 
 #include "projdefines.h"
+#include "firmware.hpp"
+
 #include "printer/printsequence.hpp"
 #include "printer/printertask.hpp"
 #include "filemanager/filetask.hpp"
@@ -20,6 +22,8 @@ QueueHandle_t gcodesQueue, printReqQueue, fileReqQueue, netAnswQueue;
 
 extern "C" void app_main(void)
 {
+  FW_StartupCheck();
+
   gcodesQueue = xQueueCreate(PRINTER_COMM_QUEUE_SIZE, sizeof(GCode::GAbstractComm*));
   printReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
   fileReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));

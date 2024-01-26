@@ -241,3 +241,22 @@ GCode::GAbstractComm* FileManager::readNextComm()
     }
     else return nullptr;
 }
+
+int32_t FileManager::fileWrite(std::string fileName, const char* writeType, void* data_ptr, size_t dataSize)
+{
+    FILE* file = fopen(fileName.c_str(), writeType);
+    if(file != NULL)
+    {
+        size_t bytesWritten = fwrite(data_ptr, sizeof(uint8_t), dataSize, file);
+
+        ESP_LOGI("FileManager::fileWrite", "Part of file %s wirtten, part size %d:", fileName.c_str(), bytesWritten);
+        fclose(file);
+
+        return bytesWritten;
+    }
+    else
+    {
+        ESP_LOGE("FileManager::fileWrite", "Error opening file to append %s", fileName.c_str());
+        return -1;
+    }
+}

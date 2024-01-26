@@ -26,6 +26,15 @@ enum class File
     FILE_APPEND_DATA
 };
 
+enum class Firmware
+{
+    FIRMWARE_VERSION,
+    FIRMWARE_UPLOAD_START,
+    FIRMWARE_UPLOAD_PROCEED,
+    FIRMWARE_UPLOAD_END,
+    FIRMWARE_UPDATE
+};
+
 }
 
 namespace Data
