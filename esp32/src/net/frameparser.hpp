@@ -9,6 +9,7 @@
 #include "netcomm/transportcommand.hpp"
 #include "netcomm/playlistcommand.hpp"
 #include "netcomm/filecommand.hpp"
+#include "netcomm/firmwarecommand.hpp"
 
 class FrameParser
 {

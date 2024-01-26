@@ -16,7 +16,12 @@ public:
         uint16_t printPoints;
     }progress;
 
-    TransportCommand(uint8_t commId, Requests::Transport action, Direction dir = Direction::REQUEST);
+    TransportCommand(uint8_t commId, Requests::Transport action, Direction dir = Direction::REQUEST)
+            : AbstractCommand(commId, dir)
+    {
+        m_commandType = CommandType::TRANSPORT_COMMAND;
+        m_action = action;
+    }
 
     Requests::Transport action() {return m_action;};
 private:

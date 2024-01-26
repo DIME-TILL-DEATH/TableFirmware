@@ -11,7 +11,8 @@ typedef enum
     ABSTRACT = 0,
     TRANSPORT_COMMAND,
     PLAYLIST_COMMAND,
-    FILE_COMMAND
+    FILE_COMMAND,
+    FIRMWARE_COMMAND
 }CommandType;
 
 typedef enum

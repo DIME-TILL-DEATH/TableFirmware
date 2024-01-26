@@ -7,6 +7,7 @@
 #include "netcomm/transportcommand.hpp"
 #include "netcomm/playlistcommand.hpp"
 #include "netcomm/filecommand.hpp"
+#include "netcomm/firmwarecommand.hpp"
 
 void processAnswer(NetComm::AbstractCommand* recvComm, int socket);
 

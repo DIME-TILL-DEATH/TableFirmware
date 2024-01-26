@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-
 #include "abstractcommand.hpp"
 #include "requestactions.h"
 
@@ -20,7 +19,15 @@ public:
         uint16_t printPoints;
     }progress;
 
-    PlaylistCommand(uint8_t commId, Requests::Playlist action, Direction dir = Direction::REQUEST);
+    PlaylistCommand(uint8_t commId, Requests::Playlist action, Direction dir = Direction::REQUEST)
+            : AbstractCommand(commId, dir)
+    {
+        m_commandType = CommandType::PLAYLIST_COMMAND;
+        m_action = action;
+
+        playlist_ptr = nullptr;
+        curPlsPos = 0;
+    }
 
     Requests::Playlist action() {return m_action;};
 

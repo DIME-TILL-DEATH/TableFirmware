@@ -8,6 +8,8 @@
 
 #include "firmware.hpp"
 
+#include "esp_app_desc.h"
+
 static const char *TAG = "FRAME PARSER";
 
 FrameParser::FrameParser(int socket)
@@ -62,6 +64,7 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
                 case FIRMWARE_ACTIONS:
                 {
                     parseFirmwareActions();
+                    break;
                 }
                 default: ESP_LOGE(TAG, "Unknown frame type");
             }
@@ -181,13 +184,13 @@ void FrameParser::parseFileActions()
     {
         case Requests::File::FILE_CREATE:
         {
-            command->dataProcessed = fileWrite(fullFileName, "w");
+            command->dataProcessed = FileManager::fileWrite(fullFileName, "w", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data1);
             break;
         }
 
         case Requests::File::FILE_APPEND_DATA:
         {
-            command->dataProcessed = fileWrite(fullFileName, "a");
+            command->dataProcessed = FileManager::fileWrite(fullFileName, "a", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data1);
             break;
         }
         default: {}
@@ -196,38 +199,35 @@ void FrameParser::parseFileActions()
     if(command) parsedCommands.push_back(command);
 }
 
-// TODO: move to file manager. Static function
-int32_t FrameParser::fileWrite(std::string fileName, const char* writeType)
-{
-    FILE* file = fopen(fileName.c_str(), writeType);
-    if(file != NULL)
-    {
-        uint32_t fileDataSize = lastRecvFrameHeader.data1;
-        const void* fileData_ptr = lastRecvFrame.data() + lastRecvFrameHeader.data0;
-        fwrite(fileData_ptr, sizeof(uint8_t), fileDataSize, file);
-
-        ESP_LOGI(TAG, "Part of file %s wirtten, part size %d:", fileName.c_str(), fileDataSize);
-        fclose(file);
-
-        return fileDataSize;
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Error opening file to append %s", fileName.c_str());
-        return -1;
-    }
-}
-
 void FrameParser::parseFirmwareActions()
 {
+    NetComm::FirmwareCommand* command = new NetComm::FirmwareCommand(0, (Requests::Firmware)lastRecvFrameHeader.actionType);
+    command->fileSize = lastRecvFrameHeader.data1;
+    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
+    std::string fullFileName = FileManager::mountPoint + "firmware.bin";
+
     switch((Requests::Firmware)lastRecvFrameHeader.actionType)
     {
     case Requests::Firmware::FIRMWARE_VERSION:
     {
+        const esp_app_desc_t* appDesc = esp_app_get_description();
+        command->firmwareVersion = appDesc->version;
         break;
     }
 
-    case Requests::Firmware::FIRMWARE_UPLOAD:
+    case Requests::Firmware::FIRMWARE_UPLOAD_START:
+    {   
+        command->dataProcessed = FileManager::fileWrite(fullFileName, "wb", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data0);
+        break;
+    }
+
+    case Requests::Firmware::FIRMWARE_UPLOAD_PROCEED:
+    {
+        command->dataProcessed = FileManager::fileWrite(fullFileName, "ab", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data0);
+        break;
+    }
+
+    case Requests::Firmware::FIRMWARE_UPLOAD_END:
     {
         break;
     }
@@ -238,4 +238,5 @@ void FrameParser::parseFirmwareActions()
         break;
     }
     }
+    if(command) parsedCommands.push_back(command);
 }

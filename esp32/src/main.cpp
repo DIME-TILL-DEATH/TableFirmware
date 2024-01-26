@@ -3,6 +3,7 @@
 #include "freertos/queue.h"
 
 #include "esp_log.h"
+#include "esp_app_desc.h"
 
 #include "net/wifi.h"
 #include "net/tcpip.hpp"
@@ -22,7 +23,10 @@ QueueHandle_t gcodesQueue, printReqQueue, fileReqQueue, netAnswQueue;
 
 extern "C" void app_main(void)
 {
+  //const esp_app_desc_t* appDesc = esp_app_get_description();
+
   FW_StartupCheck();
+  //ESP_LOGI("STARTUP", "Project version: %s", appDesc->version);
 
   gcodesQueue = xQueueCreate(PRINTER_COMM_QUEUE_SIZE, sizeof(GCode::GAbstractComm*));
   printReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));

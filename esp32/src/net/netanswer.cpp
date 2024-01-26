@@ -280,10 +280,66 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
     }
 }
 
+void processFirmwareCommand(NetComm::FirmwareCommand* firmwareAnswer, int socket)
+{
+    FrameHeader_uni answerFrameHeader;
+    memset(answerFrameHeader.rawData, 0, sizeof(FrameHeader));
+    answerFrameHeader.structData.frameType = FrameType::FIRMWARE_ACTIONS;
+
+    switch(firmwareAnswer->action())
+    {
+    case Requests::Firmware::FIRMWARE_VERSION:
+    {
+        size_t versionStringSize = firmwareAnswer->firmwareVersion.size();
+        answerFrameHeader.structData.actionType = (uint8_t)Requests::Firmware::FIRMWARE_VERSION;
+        answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + versionStringSize;
+        answerFrameHeader.structData.data0 = versionStringSize;
+        answerFrameHeader.structData.data1 = 0;
+
+        ESP_LOGI("FW", "Firmware version: %s", firmwareAnswer->firmwareVersion.c_str());
+
+        char buffer[512];
+        memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
+        memcpy(&buffer[sizeof(FrameHeader)], firmwareAnswer->firmwareVersion.c_str(), versionStringSize);
+        sendData(socket, buffer, sizeof(FrameHeader)+versionStringSize);
+        
+        break;
+    }
+    case Requests::Firmware::FIRMWARE_UPLOAD_START:
+    {   
+        // Same as proceed
+    }
+
+    case Requests::Firmware::FIRMWARE_UPLOAD_PROCEED:
+    {
+        answerFrameHeader.structData.actionType = (uint8_t)Requests::Firmware::FIRMWARE_UPLOAD_PROCEED;
+        answerFrameHeader.structData.frameSize = sizeof(FrameHeader);
+        answerFrameHeader.structData.data0 = firmwareAnswer->dataProcessed;
+        answerFrameHeader.structData.data1 = firmwareAnswer->fileSize;
+
+        char buffer[2048];
+        memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
+        sendData(socket, buffer, sizeof(FrameHeader));
+        break;
+    }
+
+    case Requests::Firmware::FIRMWARE_UPLOAD_END:
+    {
+        break;
+    }
+
+    case Requests::Firmware::FIRMWARE_UPDATE:
+    {
+        break;
+    }
+    }
+}
+
 void processAnswer(NetComm::AbstractCommand* recvComm, int socket)
 {
     switch (recvComm->commandType())
     {
+        case NetComm::ABSTRACT:{break;}
         case NetComm::TRANSPORT_COMMAND:
         { 
             NetComm::TransportCommand* transportAnswer = static_cast<NetComm::TransportCommand*>(recvComm);
@@ -302,7 +358,11 @@ void processAnswer(NetComm::AbstractCommand* recvComm, int socket)
             processFileCommand(fileAnswer, socket); 
             break;
         }
-        default:
+        case NetComm::FIRMWARE_COMMAND:
+        {
+            NetComm::FirmwareCommand* firmwareAnswer = static_cast<NetComm::FirmwareCommand*>(recvComm);
+            processFirmwareCommand(firmwareAnswer, socket);
             break;
+        }
     }
 }
