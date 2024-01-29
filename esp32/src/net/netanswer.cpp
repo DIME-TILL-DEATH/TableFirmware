@@ -82,7 +82,7 @@ void processTransportCommand(NetComm::TransportCommand* transportAnswer, int soc
         {
            // ESP_LOGI("Answer", "ready to answer, Cur point: %d, All points: %d", transportAnswer->progress.currentPoint, transportAnswer->progress.printPoints);
             
-            answerFrame.structData.actionType = (uint8_t)Requests::Transport::REQUEST_PROGRESS;
+            answerFrame.structData.action = (uint8_t)Requests::Transport::REQUEST_PROGRESS;
             answerFrame.structData.frameSize = sizeof(FrameHeader);
             answerFrame.structData.data0 = transportAnswer->progress.currentPoint;    
             answerFrame.structData.data1 = transportAnswer->progress.printPoints; 
@@ -117,7 +117,7 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
                 ESP_LOGE(TAG, "Playlis answer, pointer to playlis unavaliable");
                 return;
             }
-            answerFrameHeader.structData.actionType = (uint8_t)Requests::Playlist::REQUEST_PLAYLIST;
+            answerFrameHeader.structData.action = (uint8_t)Requests::Playlist::REQUEST_PLAYLIST;
 
             printf("Playlist: ");
             for(auto it=playlist->begin(); it!=playlist->end(); it++)
@@ -136,7 +136,7 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
         case Requests::Playlist::REQUEST_PLAYLIST_POSITION:
         {
             //ESP_LOGI("Answer", "ready to answer, playlist position:%d", playlistAnswer->curPlsPos);
-            answerFrameHeader.structData.actionType = (uint8_t)Requests::Playlist::REQUEST_PLAYLIST_POSITION;
+            answerFrameHeader.structData.action = (uint8_t)Requests::Playlist::REQUEST_PLAYLIST_POSITION;
             answerFrameHeader.structData.frameSize = sizeof(FrameHeader);
             answerFrameHeader.structData.data0 = playlistAnswer->curPlsPos;
 
@@ -175,7 +175,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
                 ESP_LOGI(TAG, "File  %s opened. Size: %d, sending answer", fileName.c_str(), fileSize);
                 fseek(reqFile, 0 , SEEK_SET); 
 
-                answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FILE;
+                answerFrameHeader.structData.action = (uint8_t)Requests::File::GET_FILE;
                 answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size() + fileSize;
                 answerFrameHeader.structData.data0 = fileName.size();
                 answerFrameHeader.structData.data1 = fileSize;
@@ -197,7 +197,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
             else
             {
                 ESP_LOGE(TAG, "File request. Can't open file %s", fileName.c_str());
-                answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FILE;
+                answerFrameHeader.structData.action = (uint8_t)Requests::File::GET_FILE;
                 answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size();
                 answerFrameHeader.structData.data0 = fileName.size();
                 answerFrameHeader.structData.data1 = -1;
@@ -250,7 +250,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
             }
             answerFrameHeader.structData.data0 = totalDirs;
             answerFrameHeader.structData.data1 = totalFiles;
-            answerFrameHeader.structData.actionType = (uint8_t)Requests::File::GET_FOLDER_CONTENT;
+            answerFrameHeader.structData.action = (uint8_t)Requests::File::GET_FOLDER_CONTENT;
 
             sendLongVector(socket, answerFrameHeader, &result);
 
@@ -266,7 +266,7 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
         case Requests::File::FILE_APPEND_DATA:
         {
             std::string fileName = fileAnswer->path;
-            answerFrameHeader.structData.actionType = (uint8_t)Requests::File::FILE_APPEND_DATA;
+            answerFrameHeader.structData.action = (uint8_t)Requests::File::FILE_APPEND_DATA;
             answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size();
             answerFrameHeader.structData.data0 = fileName.size();
             answerFrameHeader.structData.data1 = fileAnswer->dataProcessed;
@@ -291,12 +291,10 @@ void processFirmwareCommand(NetComm::FirmwareCommand* firmwareAnswer, int socket
     case Requests::Firmware::FIRMWARE_VERSION:
     {
         size_t versionStringSize = firmwareAnswer->firmwareVersion.size();
-        answerFrameHeader.structData.actionType = (uint8_t)Requests::Firmware::FIRMWARE_VERSION;
+        answerFrameHeader.structData.action = (uint8_t)Requests::Firmware::FIRMWARE_VERSION;
         answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + versionStringSize;
         answerFrameHeader.structData.data0 = versionStringSize;
         answerFrameHeader.structData.data1 = 0;
-
-        ESP_LOGI("FW", "Firmware version: %s", firmwareAnswer->firmwareVersion.c_str());
 
         char buffer[512];
         memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
@@ -312,7 +310,7 @@ void processFirmwareCommand(NetComm::FirmwareCommand* firmwareAnswer, int socket
 
     case Requests::Firmware::FIRMWARE_UPLOAD_PROCEED:
     {
-        answerFrameHeader.structData.actionType = (uint8_t)Requests::Firmware::FIRMWARE_UPLOAD_PROCEED;
+        answerFrameHeader.structData.action = (uint8_t)Requests::Firmware::FIRMWARE_UPLOAD_PROCEED;
         answerFrameHeader.structData.frameSize = sizeof(FrameHeader);
         answerFrameHeader.structData.data0 = firmwareAnswer->dataProcessed;
         answerFrameHeader.structData.data1 = firmwareAnswer->fileSize;

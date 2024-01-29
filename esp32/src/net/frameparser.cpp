@@ -81,7 +81,7 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
 
 void FrameParser::parseTransportActions()
 {
-    NetComm::TransportCommand* command = new NetComm::TransportCommand(0, (Requests::Transport)lastRecvFrameHeader.actionType);
+    NetComm::TransportCommand* command = new NetComm::TransportCommand(0, (Requests::Transport)lastRecvFrameHeader.action);
     //ESP_LOGI(TAG, "Formed new transport req, act type: %d", lastRecvFrameHeader.actionType);
     parsedCommands.push_back(command);
 }
@@ -89,8 +89,8 @@ void FrameParser::parseTransportActions()
 #define PLAYLIST_RX_BUFFER 512
 void FrameParser::parsePlaylistActions()
 {
-    NetComm::PlaylistCommand* command = new NetComm::PlaylistCommand(0, (Requests::Playlist)lastRecvFrameHeader.actionType);
-    switch((Requests::Playlist)lastRecvFrameHeader.actionType)
+    NetComm::PlaylistCommand* command = new NetComm::PlaylistCommand(0, (Requests::Playlist)lastRecvFrameHeader.action);
+    switch((Requests::Playlist)lastRecvFrameHeader.action)
     {
         case Requests::Playlist::REQUEST_PLAYLIST:
         {
@@ -172,7 +172,7 @@ void FrameParser::parseFileActions()
     char buffer[512];
     memset(buffer, 0, 512);
 
-    NetComm::FileCommand* command = new NetComm::FileCommand(0, (Requests::File)lastRecvFrameHeader.actionType);
+    NetComm::FileCommand* command = new NetComm::FileCommand(0, (Requests::File)lastRecvFrameHeader.action);
 
     lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
     memcpy(buffer, lastRecvFrame.data(), lastRecvFrameHeader.data0);
@@ -180,7 +180,7 @@ void FrameParser::parseFileActions()
     std::string fullFileName = std::string(buffer);
     command->path = fullFileName;
 
-    switch((Requests::File)lastRecvFrameHeader.actionType)
+    switch((Requests::File)lastRecvFrameHeader.action)
     {
         case Requests::File::FILE_CREATE:
         {
@@ -201,12 +201,12 @@ void FrameParser::parseFileActions()
 
 void FrameParser::parseFirmwareActions()
 {
-    NetComm::FirmwareCommand* command = new NetComm::FirmwareCommand(0, (Requests::Firmware)lastRecvFrameHeader.actionType);
+    NetComm::FirmwareCommand* command = new NetComm::FirmwareCommand(0, (Requests::Firmware)lastRecvFrameHeader.action);
     command->fileSize = lastRecvFrameHeader.data1;
     lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
     std::string fullFileName = FileManager::mountPoint + "firmware.bin";
 
-    switch((Requests::Firmware)lastRecvFrameHeader.actionType)
+    switch((Requests::Firmware)lastRecvFrameHeader.action)
     {
     case Requests::Firmware::FIRMWARE_VERSION:
     {
