@@ -66,6 +66,15 @@ void processNetRequest(NetComm::PlaylistCommand* recvComm)
             sendPlaylistPositionAnswer();
             break;
         }
+
+        case Requests::Playlist::CHANGE_PRINTNG_FILE:
+        {
+            ESP_LOGI("FILE TASK", "Request to change printng file");
+            xQueueReset(fileReqQueue);
+            fileManager.loadPrintFromPlaylist(recvComm->curPlsPos);
+            sendPlaylistPositionAnswer();
+            break;
+        }
     }
 }
 

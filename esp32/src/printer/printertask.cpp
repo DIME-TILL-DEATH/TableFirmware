@@ -28,11 +28,6 @@ void processNetRequest(NetComm::TransportCommand* command)
             xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(10));
             break;
         }
-
-        case Requests::Transport::SET_PRINT:
-        {
-            break;
-        }
     }
 }
 

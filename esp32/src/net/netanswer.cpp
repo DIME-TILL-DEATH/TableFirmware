@@ -11,6 +11,7 @@
 #include "filemanager/filemanager.hpp"
 #include "frames.h"
 #include "requestactions.h"
+#include "firmware.hpp"
 
 #include "lwip/err.h"
 #include "lwip/sockets.h"
@@ -90,11 +91,6 @@ void processTransportCommand(NetComm::TransportCommand* transportAnswer, int soc
             sendData(socket, answerFrame.rawData, sizeof(FrameHeader));
             break;
         }
-
-        case Requests::Transport::SET_PRINT:
-        {
-            break;
-        }
     }
 }
 
@@ -104,10 +100,13 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
     memset(answerFrameHeader.rawData, 0, sizeof(FrameHeader));
     answerFrameHeader.structData.frameType = FrameType::PLAYLIST_ACTIONS;
 
-    char txBuffer[TX_BUFFER_SIZE];
-
     switch(playlistAnswer->action())
     {
+        case Requests::Playlist::CHANGE_PLAYLIST:
+        {
+            //break;
+        }
+
         case Requests::Playlist::REQUEST_PLAYLIST:
         {
             std::vector<std::string>* playlist = playlistAnswer->playlist_ptr;
@@ -133,6 +132,16 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
             break;
         }
 
+        case Requests::Playlist::CHANGE_PLAYLIST_POSITION:
+        {
+            //break;
+        }
+
+        case Requests::Playlist::CHANGE_PRINTNG_FILE:
+        {
+           // break;
+        }
+
         case Requests::Playlist::REQUEST_PLAYLIST_POSITION:
         {
             //ESP_LOGI("Answer", "ready to answer, playlist position:%d", playlistAnswer->curPlsPos);
@@ -141,16 +150,6 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
             answerFrameHeader.structData.data0 = playlistAnswer->curPlsPos;
 
             sendData(socket, answerFrameHeader.rawData, sizeof(FrameHeader));
-            break;
-        }
-
-        case Requests::Playlist::CHANGE_PLAYLIST:
-        {
-            break;
-        }
-
-        case Requests::Playlist::CHANGE_PLAYLIST_POSITION:
-        {
             break;
         }
     }
@@ -177,8 +176,8 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
 
                 answerFrameHeader.structData.action = (uint8_t)Requests::File::GET_FILE;
                 answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size() + fileSize;
-                answerFrameHeader.structData.data0 = fileName.size();
-                answerFrameHeader.structData.data1 = fileSize;
+                answerFrameHeader.structData.frameParameters = fileName.size();
+                answerFrameHeader.structData.data0 = fileSize;
 
                 char buffer[2048];
                 memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
@@ -199,8 +198,8 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
                 ESP_LOGE(TAG, "File request. Can't open file %s", fileName.c_str());
                 answerFrameHeader.structData.action = (uint8_t)Requests::File::GET_FILE;
                 answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size();
-                answerFrameHeader.structData.data0 = fileName.size();
-                answerFrameHeader.structData.data1 = -1;
+                answerFrameHeader.structData.frameParameters = fileName.size();
+                answerFrameHeader.structData.data0 = -1;
 
                 char buffer[512];
                 memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
@@ -229,7 +228,9 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
             uint32_t totalFiles = 0;
             uint32_t totalDirs = 0;
             std::vector<std::string> result;
-            result.push_back(dirPath + std::string("*"));
+            //result.push_back(dirPath + std::string("*"));
+            result.push_back(dirPath);
+            answerFrameHeader.structData.frameParameters = dirPath.size();
 
             while ((entry = readdir(dir)) != NULL) 
             {
@@ -268,8 +269,8 @@ void processFileCommand(NetComm::FileCommand* fileAnswer, int socket)
             std::string fileName = fileAnswer->path;
             answerFrameHeader.structData.action = (uint8_t)Requests::File::FILE_APPEND_DATA;
             answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + fileName.size();
-            answerFrameHeader.structData.data0 = fileName.size();
-            answerFrameHeader.structData.data1 = fileAnswer->dataProcessed;
+            answerFrameHeader.structData.frameParameters = fileName.size();
+            answerFrameHeader.structData.data0 = fileAnswer->dataProcessed;
 
             char buffer[2048];
             memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
@@ -293,8 +294,7 @@ void processFirmwareCommand(NetComm::FirmwareCommand* firmwareAnswer, int socket
         size_t versionStringSize = firmwareAnswer->firmwareVersion.size();
         answerFrameHeader.structData.action = (uint8_t)Requests::Firmware::FIRMWARE_VERSION;
         answerFrameHeader.structData.frameSize = sizeof(FrameHeader) + versionStringSize;
-        answerFrameHeader.structData.data0 = versionStringSize;
-        answerFrameHeader.structData.data1 = 0;
+        answerFrameHeader.structData.frameParameters = versionStringSize;
 
         char buffer[512];
         memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
@@ -321,13 +321,17 @@ void processFirmwareCommand(NetComm::FirmwareCommand* firmwareAnswer, int socket
         break;
     }
 
-    case Requests::Firmware::FIRMWARE_UPLOAD_END:
-    {
-        break;
-    }
-
     case Requests::Firmware::FIRMWARE_UPDATE:
     {
+        answerFrameHeader.structData.action = (uint8_t)Requests::Firmware::FIRMWARE_UPDATE;
+        answerFrameHeader.structData.frameSize = sizeof(FrameHeader);
+
+        ESP_LOGI("UPDATE", "Send frame FIRMWARE_UPDATE");
+
+        char buffer[128];
+        memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
+        sendData(socket, buffer, sizeof(FrameHeader));
+        
         break;
     }
     }

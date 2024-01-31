@@ -51,13 +51,22 @@ void WIFI_Init(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     netif_ptr = esp_netif_create_default_wifi_ap();
 
+    esp_netif_dns_info_t DNS_ipInfo = {0};
     esp_netif_ip_info_t NETIF_ipInfo;
 
     esp_netif_dhcps_stop(netif_ptr);
+    esp_netif_get_ip_info(netif_ptr, &NETIF_ipInfo);
+
     NETIF_ipInfo.ip.addr = ipaddr_addr("192.168.1.1");
     NETIF_ipInfo.gw.addr = ipaddr_addr("192.168.1.1");
-    NETIF_ipInfo.netmask.addr = ipaddr_addr("255.255.255.0");
+    NETIF_ipInfo.netmask.addr = ipaddr_addr("255.255.255.0");   
     esp_netif_set_ip_info(netif_ptr, &NETIF_ipInfo);
+
+    //DNS_ipInfo.ip.u_addr = ipaddr_addr("0.0.0.0");
+   // IP_ADDR4(&DNS_ipInfo.ip, 0, 0, 0, 0);
+    //dhcps_offer_t opt_val = OFFER_DNS;
+    //esp_netif_dhcps_option(netif_ptr, TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_DOMAIN_NAME_SERVER, &opt_val, 1);
+
     esp_netif_dhcps_start(netif_ptr);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();

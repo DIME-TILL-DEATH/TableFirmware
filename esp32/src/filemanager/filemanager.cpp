@@ -249,7 +249,7 @@ int32_t FileManager::fileWrite(std::string fileName, const char* writeType, void
     {
         size_t bytesWritten = fwrite(data_ptr, sizeof(uint8_t), dataSize, file);
 
-        ESP_LOGI("FileManager::fileWrite", "Part of file %s wirtten, part size %d:", fileName.c_str(), bytesWritten);
+        ESP_LOGI("FileManager::fileWrite", "Part of file %s written, part size %d:", fileName.c_str(), bytesWritten);
         fclose(file);
 
         return bytesWritten;

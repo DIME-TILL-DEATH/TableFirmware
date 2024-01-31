@@ -90,6 +90,8 @@ void FrameParser::parseTransportActions()
 void FrameParser::parsePlaylistActions()
 {
     NetComm::PlaylistCommand* command = new NetComm::PlaylistCommand(0, (Requests::Playlist)lastRecvFrameHeader.action);
+
+    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
     switch((Requests::Playlist)lastRecvFrameHeader.action)
     {
         case Requests::Playlist::REQUEST_PLAYLIST:
@@ -106,8 +108,6 @@ void FrameParser::parsePlaylistActions()
 
         case Requests::Playlist::CHANGE_PLAYLIST:
         {
-            lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-
             char buffer[PLAYLIST_RX_BUFFER*2];
             memset(buffer, 0XFF, PLAYLIST_RX_BUFFER*2);
 
@@ -157,10 +157,12 @@ void FrameParser::parsePlaylistActions()
 
         case Requests::Playlist::CHANGE_PLAYLIST_POSITION:
         {
-            lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-            int16_t plsPosition = (lastRecvFrame.at(0)<<0) | (lastRecvFrame.at(1)<<8);
+            // Same actions
+        }
 
-            command->curPlsPos = plsPosition;
+        case Requests::Playlist::CHANGE_PRINTNG_FILE:
+        {
+            command->curPlsPos = lastRecvFrameHeader.data0;
             break;
         }
     }
@@ -174,23 +176,28 @@ void FrameParser::parseFileActions()
 
     NetComm::FileCommand* command = new NetComm::FileCommand(0, (Requests::File)lastRecvFrameHeader.action);
 
+    uint16_t pathStringSize = lastRecvFrameHeader.frameParameters;
+    int32_t partSize = lastRecvFrameHeader.data0;
+
     lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-    memcpy(buffer, lastRecvFrame.data(), lastRecvFrameHeader.data0);
+    memcpy(buffer, lastRecvFrame.data(), pathStringSize);
 
     std::string fullFileName = std::string(buffer);
     command->path = fullFileName;
+
+    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin() + pathStringSize);
 
     switch((Requests::File)lastRecvFrameHeader.action)
     {
         case Requests::File::FILE_CREATE:
         {
-            command->dataProcessed = FileManager::fileWrite(fullFileName, "w", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data1);
+            command->dataProcessed = FileManager::fileWrite(fullFileName, "w", lastRecvFrame.data(), partSize);
             break;
         }
 
         case Requests::File::FILE_APPEND_DATA:
         {
-            command->dataProcessed = FileManager::fileWrite(fullFileName, "a", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data1);
+            command->dataProcessed = FileManager::fileWrite(fullFileName, "a", lastRecvFrame.data(), partSize);
             break;
         }
         default: {}
@@ -206,6 +213,8 @@ void FrameParser::parseFirmwareActions()
     lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
     std::string fullFileName = FileManager::mountPoint + "firmware.bin";
 
+    int32_t partSize = lastRecvFrameHeader.data0;
+
     switch((Requests::Firmware)lastRecvFrameHeader.action)
     {
     case Requests::Firmware::FIRMWARE_VERSION:
@@ -217,18 +226,13 @@ void FrameParser::parseFirmwareActions()
 
     case Requests::Firmware::FIRMWARE_UPLOAD_START:
     {   
-        command->dataProcessed = FileManager::fileWrite(fullFileName, "wb", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data0);
+        command->dataProcessed = FileManager::fileWrite(fullFileName, "wb", lastRecvFrame.data(), partSize);
         break;
     }
 
     case Requests::Firmware::FIRMWARE_UPLOAD_PROCEED:
     {
-        command->dataProcessed = FileManager::fileWrite(fullFileName, "ab", lastRecvFrame.data() + lastRecvFrameHeader.data0, lastRecvFrameHeader.data0);
-        break;
-    }
-
-    case Requests::Firmware::FIRMWARE_UPLOAD_END:
-    {
+        command->dataProcessed = FileManager::fileWrite(fullFileName, "ab", lastRecvFrame.data(), partSize);
         break;
     }
 

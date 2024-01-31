@@ -17,7 +17,6 @@ namespace Requests
 enum class Transport
 {
     PAUSE_PRINTING,
-    SET_PRINT,
     REQUEST_PROGRESS
 };
 
@@ -26,7 +25,8 @@ enum class Playlist
     REQUEST_PLAYLIST,
     REQUEST_PLAYLIST_POSITION,
     CHANGE_PLAYLIST,
-    CHANGE_PLAYLIST_POSITION
+    CHANGE_PLAYLIST_POSITION,
+    CHANGE_PRINTNG_FILE
 };
 
 enum class File
@@ -42,7 +42,6 @@ enum class Firmware
     FIRMWARE_VERSION,
     FIRMWARE_UPLOAD_START,
     FIRMWARE_UPLOAD_PROCEED,
-    FIRMWARE_UPLOAD_END,
     FIRMWARE_UPDATE
 };
 
