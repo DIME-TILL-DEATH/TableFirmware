@@ -5,7 +5,7 @@
 
 #include "esp_log.h"
 
-#include "net/wifi.h"
+#include "net/wifi.hpp"
 #include "net/tcpip.hpp"
 
 #include "requestactions.h"
@@ -17,7 +17,7 @@
 #include "netcomm/abstractcommand.hpp"
 #include "netcomm/playlistcommand.hpp"
 
-FileManager fileManager;
+#include "settings.hpp"
 
 void sendPlaylistAnswer()
 {
@@ -81,13 +81,12 @@ void processNetRequest(NetComm::PlaylistCommand* recvComm)
 void file_task(void *arg)
 {
   FM_RESULT result;
-  do
-  {
-    result = fileManager.connectSDCard();
-    vTaskDelay(pdMS_TO_TICKS(1000));
-  }while(result != FM_OK);
 
-  fileManager.loadPlaylist();
+  std::string playlistName = Settings::getStringSetting(Settings::String::PLAYLIST);
+  uint32_t playlstPosition = Settings::getDigitSetting(Settings::Digit::LAST_PLAYLIST_POSITION);
+
+  fileManager.loadPlaylist(playlistName, playlstPosition);
+  ESP_LOGI("FM TASK", "Loading playlist %s in position %d", playlistName.c_str(), playlstPosition);
 
   for(;;)
   {

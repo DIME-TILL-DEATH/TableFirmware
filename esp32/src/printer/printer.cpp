@@ -3,12 +3,16 @@
 #include "esp_log.h"
 #include "printer.hpp"
 
-#define GLOBAL_IGNORE_ENDSTOPS
+#include "filemanager/settings.hpp"
 
 Printer::Printer()
 {
     m_state = PrinterState::IDLE;
     m_previousState = m_state;
+
+    speed = 25;
+    coordSysRotation = 0;
+    printScaleCoef = 1;
 
     currentPosition.x = 0;
     currentPosition.y = 0;
@@ -27,6 +31,15 @@ void Printer::initTimers(gptimer_alarm_cb_t rTimerCb,
 void Printer::initPins(gpio_isr_t endStops_cb)
 {
     printerPins = new Pins::PrinterPins(endStops_cb);
+}
+
+void Printer::loadSettings()
+{
+    speed = Settings::getDigitSetting(Settings::Digit::PRINT_SPEED);
+    coordSysRotation = (Settings::getDigitSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI_2;
+    printScaleCoef = Settings::getDigitSetting(Settings::Digit::SCALE_COEF);
+
+    ESP_LOGI(TAG, "Loading printer settings. Speed: %f, Rotation: %f, Scale: %f", speed, coordSysRotation, printScaleCoef);  
 }
 
 void Printer::findCenter()

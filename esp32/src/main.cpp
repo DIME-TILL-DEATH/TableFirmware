@@ -5,7 +5,7 @@
 #include "esp_log.h"
 #include "esp_app_desc.h"
 
-#include "net/wifi.h"
+#include "net/wifi.hpp"
 #include "net/tcpip.hpp"
 
 #include "projdefines.h"
@@ -21,22 +21,32 @@
 
 QueueHandle_t gcodesQueue, printReqQueue, fileReqQueue, netAnswQueue;
 
+FileManager fileManager;
+
 extern "C" void app_main(void)
 {
-  //const esp_app_desc_t* appDesc = esp_app_get_description();
-
   FW_StartupCheck();
-  //ESP_LOGI("STARTUP", "Project version: %s", appDesc->version);
 
   gcodesQueue = xQueueCreate(PRINTER_COMM_QUEUE_SIZE, sizeof(GCode::GAbstractComm*));
   printReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
   fileReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
   netAnswQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
 
+  // FM_RESULT result;
+  // do
+  // {
+  //   result = fileManager.connectSDCard();
+  //   vTaskDelay(pdMS_TO_TICKS(1000));
+  // }while(result != FM_OK);
+
+  while(fileManager.connectSDCard() != FM_OK)
+  {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+
   WIFI_Init();
   TCPIP_Init();
-  Printer_Init();
-
+  
   if(gcodesQueue != NULL)
   {
     xTaskCreatePinnedToCore(file_task, "file_manager", 4096, NULL, PRIORITY_FILE_MANAGER_TASK, NULL, 1);

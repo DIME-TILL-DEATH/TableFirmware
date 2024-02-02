@@ -4,6 +4,8 @@
 #include <vector>
 #include <queue>
 
+#include "projdefines.h"
+
 #include "intervaltimer.hpp"
 #include "printerpins.hpp"
 
@@ -34,6 +36,7 @@ public:
     void initTimers(gptimer_alarm_cb_t rTimerCb,
                     gptimer_alarm_cb_t fiTimerCb);
     void initPins(gpio_isr_t endStops_cb);
+    void loadSettings();
 
     void findCenter();
 
@@ -55,6 +58,8 @@ public:
 
     bool isPrinterFree();
 private:
+    constexpr static char TAG[] = "PRINTER";
+
     typedef enum
     {
         ERROR = 0,
@@ -99,8 +104,11 @@ private:
     bool fiCenterTrigger = false;
     bool rCenterTrigger = false;
 
-    float_t speed = 40;//7.5;
-    float_t coordSysRotation = M_PI_2;
+    float_t speed;
+    float_t coordSysRotation;
+    float_t printScaleCoef;
+
+    uint16_t rMoveDiapason = 270;
 
     void abortPoint();
 
@@ -122,11 +130,7 @@ private:
     static constexpr uint16_t minRPeriod = 100;
     static constexpr uint16_t minFiPeriod = 250;
 
-    static constexpr float_t printScaleCoef = 0.7;
-
     static constexpr float_t stepSize = 1;
-
-    static constexpr uint16_t rMoveDiapason = 270;
 
     static constexpr uint16_t uTicks = 16;
     static constexpr uint16_t motorRoundTicks = 200;

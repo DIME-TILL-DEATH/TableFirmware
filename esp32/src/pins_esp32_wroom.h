@@ -3,7 +3,7 @@
 
 #include "driver/gpio.h"
 
-#define PINS_FREE_JTAG
+#include "projdefines.h"
 
 #ifdef PINS_FREE_JTAG
 #define PIN_SDCARD_MISO GPIO_NUM_23

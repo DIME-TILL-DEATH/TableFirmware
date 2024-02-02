@@ -71,7 +71,7 @@ static bool IRAM_ATTR fiTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_
 
 void Printer_Init()
 {
-    printMutex = portMUX_INITIALIZER_UNLOCKED;
+  printMutex = portMUX_INITIALIZER_UNLOCKED;
 
   rTimerSemaphore = xSemaphoreCreateBinary();
   fiTimerSemaphore = xSemaphoreCreateBinary();
@@ -80,5 +80,5 @@ void Printer_Init()
 
   printer.initPins(gpio_isr_handler);
   printer.initTimers(rTimer_on_alarm_cb, fiTimer_on_alarm_cb);
-
+  printer.loadSettings();
 }

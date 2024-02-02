@@ -33,6 +33,8 @@ void processNetRequest(NetComm::TransportCommand* command)
 
 void printer_task(void *arg)
 {
+  Printer_Init();
+  
   for(;;)
   { 
     if(printer.isPrinterFree())

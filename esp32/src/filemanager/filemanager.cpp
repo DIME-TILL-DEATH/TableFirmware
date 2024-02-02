@@ -15,8 +15,6 @@
 
 using namespace std;
 
-static const char *FM_TAG = "FILE MANGER";
-
 FileManager::FileManager()
 {
     SDBUS_Init();
@@ -24,19 +22,19 @@ FileManager::FileManager()
 
 FM_RESULT FileManager::connectSDCard()
 {
-    // FRESULT res;
-
     esp_err_t retEsp = SDCARD_Mount();
     if(retEsp != ESP_OK)
     {
         return FM_ERROR;
     }
 
+    // Info. Don't need whth application:
+    /*
     DIR* dir;
     dir = opendir(MOUNT_POINT"/");
     if(dir == NULL)
     {
-        ESP_LOGE(FM_TAG, "opendir() failed");
+        ESP_LOGE(TAG, "opendir() failed");
         return FM_ERROR;
     }
 
@@ -62,21 +60,21 @@ FM_RESULT FileManager::connectSDCard()
     closedir(dir);
 
     printf("(total: %lu dirs, %lu files)--------\r\n",
-                totalDirs, totalFiles);
+                totalDirs, totalFiles);*/
 
     return FM_OK;
 }
 
-FM_RESULT FileManager::loadPlaylist()
+FM_RESULT FileManager::loadPlaylist(std::string playlistName, uint32_t playlstPosition)
 {
     std::string fullFileName;
-    fullFileName = mountPoint + playlistsDir + "playlist.pls";
+    fullFileName = mountPoint + playlistsDir + playlistName;
 
     FILE* playlistFile = fopen(fullFileName.c_str(), "r");
 
     if(playlistFile == NULL)
     {
-        ESP_LOGE(FM_TAG, "Open playlist failed, res = %d");
+        ESP_LOGE(TAG, "Open playlist failed, res = %d");
         return FM_ERROR;
     }
 
@@ -89,14 +87,17 @@ FM_RESULT FileManager::loadPlaylist()
     }
     fclose(playlistFile);
 
-    curPlsPos = -1; // no file loaded
+    curPlsPos = playlstPosition;
 
+    // Only Info
+    /*
     printf("Playlist:\r\n");
     for(uint16_t i=0; i<playlist.size();i++)
     {
         printf("%s\r\n", playlist.at(i).c_str());
     }
     printf("--------\r\n");
+    */
 
     return FM_OK;
 }
@@ -112,7 +113,7 @@ void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
 
     if(playlistFile == NULL)
     {
-        ESP_LOGE(FM_TAG, "Open playlist failed, res = %d");
+        ESP_LOGE(TAG, "Open playlist failed, res = %d");
         return;
     }
 
@@ -121,7 +122,7 @@ void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
         fputs((*it).data(), playlistFile);
         //printf("%s  ", (*it).c_str());
     }
-    ESP_LOGI(FM_TAG, "New playlist wirtten");
+    ESP_LOGI(TAG, "New playlist wirtten");
     fclose(playlistFile);
 }
 
@@ -146,7 +147,7 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
 
     if(num > playlist.size()-1)
     {
-        ESP_LOGE(FM_TAG, "loadPrintFromPlaylis: requested num more than playlist size, num: %d, size: %d", num, playlist.size());
+        ESP_LOGE(TAG, "loadPrintFromPlaylis: requested num more than playlist size, num: %d, size: %d", num, playlist.size());
     }
 
     curPlsPos = num;
@@ -162,7 +163,7 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     currentPrintFile = fopen(fullFileName.c_str(), "r");
     if(currentPrintFile == NULL)
     {
-        ESP_LOGE(FM_TAG, "Can't open print file %s", currentFileName.c_str());
+        ESP_LOGE(TAG, "Can't open print file %s", currentFileName.c_str());
         return FM_ERROR;
     }
 
@@ -176,7 +177,7 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     } while (result);
     fseek(currentPrintFile, 0, SEEK_SET);
     
-    ESP_LOGI(FM_TAG, "File %s succesfully opened. Point num: %d Printing...", currentFileName.c_str(), m_pointsNum);
+    ESP_LOGI(TAG, "File %s succesfully opened. Point num: %d Printing...", currentFileName.c_str(), m_pointsNum);
     return FM_OK;
 }
 

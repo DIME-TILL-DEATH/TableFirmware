@@ -3,4 +3,6 @@
 
 void file_task(void *arg);
 
+extern FileManager fileManager;
+
 #endif

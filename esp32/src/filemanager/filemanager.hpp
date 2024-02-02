@@ -26,7 +26,7 @@ public:
     FileManager();
 
     FM_RESULT connectSDCard();
-    FM_RESULT loadPlaylist();
+    FM_RESULT loadPlaylist(std::string playlistName, uint32_t playlstPosition);
     FM_RESULT loadNextPrint();
     FM_RESULT loadPrintFromPlaylist(uint16_t num);
 
@@ -52,6 +52,8 @@ private:
     int16_t curPlsPos{-1};
     std::vector<std::string> playlist;
     uint16_t m_pointsNum{0};
+
+    constexpr static char TAG[] = "FILE MANGER";
 };
 
 #endif /* USER_FILEMANAGER_HPP */
