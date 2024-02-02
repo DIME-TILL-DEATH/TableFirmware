@@ -70,7 +70,7 @@ void processNetRequest(NetComm::PlaylistCommand* recvComm)
         case Requests::Playlist::CHANGE_PRINTNG_FILE:
         {
             ESP_LOGI("FILE TASK", "Request to change printng file");
-            xQueueReset(fileReqQueue);
+            xQueueReset(gcodesQueue);
             fileManager.loadPrintFromPlaylist(recvComm->curPlsPos);
             sendPlaylistPositionAnswer();
             break;
