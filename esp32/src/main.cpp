@@ -27,26 +27,21 @@ extern "C" void app_main(void)
 {
   FW_StartupCheck();
 
+  WIFI_Init();
+  TCPIP_Init();
+
   gcodesQueue = xQueueCreate(PRINTER_COMM_QUEUE_SIZE, sizeof(GCode::GAbstractComm*));
   printReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
   fileReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
   netAnswQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
 
-  // FM_RESULT result;
-  // do
-  // {
-  //   result = fileManager.connectSDCard();
-  //   vTaskDelay(pdMS_TO_TICKS(1000));
-  // }while(result != FM_OK);
+
 
   while(fileManager.connectSDCard() != FM_OK)
   {
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 
-  WIFI_Init();
-  TCPIP_Init();
-  
   if(gcodesQueue != NULL)
   {
     xTaskCreatePinnedToCore(file_task, "file_manager", 4096, NULL, PRIORITY_FILE_MANAGER_TASK, NULL, 1);

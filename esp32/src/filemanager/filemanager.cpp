@@ -87,7 +87,7 @@ FM_RESULT FileManager::loadPlaylist(std::string playlistName, uint32_t playlstPo
     }
     fclose(playlistFile);
 
-    curPlsPos = playlstPosition;
+    curPlsPos = playlstPosition-1; // first command "loadNextPrint"
 
     // Only Info
     /*
