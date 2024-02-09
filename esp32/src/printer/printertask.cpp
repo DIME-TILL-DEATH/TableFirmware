@@ -25,12 +25,31 @@ void processNetRequest(NetComm::TransportCommand* command)
             NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::REQUEST_PROGRESS, NetComm::ANSWER);
             answer->progress.currentPoint = printer.currentPrintPointNum();
             answer->progress.printPoints = fileManager.pointsNum();
-            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(10));
+            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
+            break;
+        }
+
+        case Requests::Transport::SET_PRINT_SPEED:
+        {
+            NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::SET_PRINT_SPEED, NetComm::ANSWER);
+            printer.setSpeed(command->printSpeed);
+            answer->printSpeed = printer.getSpeed();
+            ESP_LOGI("PRINTER TASK", "Settled speed: %f", printer.getSpeed());
+            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
+            break;         
+        }
+
+        case Requests::Transport::GET_PRINT_SPEED:
+        {
+            NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::GET_PRINT_SPEED, NetComm::ANSWER);
+            answer->printSpeed = printer.getSpeed();
+            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
             break;
         }
     }
 }
 
+bool firstCommRecv = false;
 void printer_task(void *arg)
 {
   Printer_Init();
@@ -44,6 +63,11 @@ void printer_task(void *arg)
       if(xStatus == pdPASS)
       {
          printer.setNextCommand(recvComm);
+         firstCommRecv = true;
+      }
+      else
+      {
+         if(firstCommRecv) ESP_LOGE("PRINTER TASK", "queue empty");
       }
     }
     printer.printRoutine();

@@ -95,13 +95,15 @@ void file_task(void *arg)
         GCode::GAbstractComm* nextComm = fileManager.readNextComm();
         if(nextComm)
         {
-          xQueueSendToBack(gcodesQueue, &nextComm, portMAX_DELAY);            
+          xQueueSendToBack(gcodesQueue, &nextComm, portMAX_DELAY);        
         }
         else
         {
             do
             {
+                ESP_LOGI("FM TASK", "loading next print");
                 result = fileManager.loadNextPrint();
+                ESP_LOGI("FM TASK", "loaded");
             }
             while(result != FM_OK);
         } 

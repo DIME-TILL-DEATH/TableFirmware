@@ -5,6 +5,9 @@
 #include "esp_log.h"
 #include "esp_app_desc.h"
 
+#include "esp_efuse.h"
+#include "esp_efuse_table.h"
+
 #include "net/wifi.hpp"
 #include "net/tcpip.hpp"
 

@@ -91,6 +91,21 @@ void processTransportCommand(NetComm::TransportCommand* transportAnswer, int soc
             sendData(socket, answerFrame.rawData, sizeof(FrameHeader));
             break;
         }
+
+        case Requests::Transport::SET_PRINT_SPEED:
+        {
+
+        }
+
+        case Requests::Transport::GET_PRINT_SPEED:
+        {
+            answerFrame.structData.action = (uint8_t)Requests::Transport::GET_PRINT_SPEED;
+            answerFrame.structData.frameSize = sizeof(FrameHeader);
+            answerFrame.structData.data0 = (uint32_t)transportAnswer->printSpeed;    
+
+            sendData(socket, answerFrame.rawData, sizeof(FrameHeader));
+            break;
+        }
     }
 }
 

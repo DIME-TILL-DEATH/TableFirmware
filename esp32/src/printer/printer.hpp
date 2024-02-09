@@ -49,6 +49,9 @@ public:
     void trigFiZero() {fiCenterTrigger = true;};
     void trigRZero() {rCenterTrigger = true;};
 
+    void setSpeed(float_t newSpeed) {speed = newSpeed;};
+    float_t getSpeed() {return speed;};
+
     void stop();
     void pause(uint32_t time);
     void pause();

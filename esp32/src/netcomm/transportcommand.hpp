@@ -1,6 +1,8 @@
 #ifndef TRANSPORTCOMMAND_H
 #define TRANSPORTCOMMAND_H
 
+#include <math.h>
+
 #include "requestactions.h"
 #include "abstractcommand.hpp"
 
@@ -22,6 +24,8 @@ public:
         m_commandType = CommandType::TRANSPORT_COMMAND;
         m_action = action;
     }
+
+    float_t printSpeed;
 
     Requests::Transport action() {return m_action;};
 private:

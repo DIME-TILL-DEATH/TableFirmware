@@ -167,15 +167,20 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
         return FM_ERROR;
     }
 
+     ESP_LOGE(TAG, "File opened");
+
     char* result;
     char readBuf[512];
     m_pointsNum = 0;
+    ESP_LOGE(TAG, "Counting points %d", m_pointsNum);
     do
     {
         result = fgets(readBuf, 512, currentPrintFile);
         m_pointsNum++;
+         
     } while (result);
     fseek(currentPrintFile, 0, SEEK_SET);
+    ESP_LOGE(TAG, "Finish ounting points %d", m_pointsNum);
     
     ESP_LOGI(TAG, "File %s succesfully opened. Point num: %d Printing...", currentFileName.c_str(), m_pointsNum);
     return FM_OK;

@@ -82,7 +82,16 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
 void FrameParser::parseTransportActions()
 {
     NetComm::TransportCommand* command = new NetComm::TransportCommand(0, (Requests::Transport)lastRecvFrameHeader.action);
-    //ESP_LOGI(TAG, "Formed new transport req, act type: %d", lastRecvFrameHeader.actionType);
+    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
+    switch((Requests::Transport)lastRecvFrameHeader.action)
+    {
+        case Requests::Transport::SET_PRINT_SPEED:
+        {
+            command->printSpeed = (float_t)lastRecvFrameHeader.data0;
+            break;
+        }
+        default: {};
+    }
     parsedCommands.push_back(command);
 }
 

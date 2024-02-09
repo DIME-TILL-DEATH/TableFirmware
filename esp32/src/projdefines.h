@@ -8,6 +8,6 @@
 #define PRIORITY_ISR_TIMER_HANDLER 200
 
 #define GLOBAL_IGNORE_ENDSTOPS
-#define PINS_FREE_JTAG
+//#define PINS_FREE_JTAG
 
 #endif

@@ -122,7 +122,7 @@ void FW_DoFirmwareUpdate()
                 }
             }
 
-            err = esp_ota_write( update_handle, (const void *)ota_write_data, data_read);
+            err = esp_ota_write(update_handle, (const void *)ota_write_data, data_read);
             if (err != ESP_OK) 
             {
                 ESP_LOGE(TAG, "esp_ota_write() error");

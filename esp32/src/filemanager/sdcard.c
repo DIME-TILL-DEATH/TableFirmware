@@ -4,6 +4,7 @@
 
 #include "pins_esp32_wroom.h"
 
+#include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
@@ -28,13 +29,18 @@ esp_err_t SDBUS_Init(void)
     // Example: for fixed frequency of 10MHz, use host.max_freq_khz = 10000;
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 
+    // need for reset jtag from this pins
+    gpio_reset_pin(PIN_NUM_MOSI);
+    gpio_reset_pin(PIN_NUM_MISO);
+    gpio_reset_pin(PIN_NUM_CLK);
+
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = PIN_NUM_MOSI,
         .miso_io_num = PIN_NUM_MISO,
         .sclk_io_num = PIN_NUM_CLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 4000,
+        .max_transfer_sz = 8192, //4000,
     };
 
     ret = spi_bus_initialize(host.slot, &bus_cfg, 1);
