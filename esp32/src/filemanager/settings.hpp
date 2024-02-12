@@ -24,14 +24,17 @@ public:
         LAST_PLAYLIST_POSITION
     };
 
-    static float_t getDigitSetting(Settings::Digit setting);
-    static std::string getStringSetting(Settings::String setting);
-private:
-    static std::string digitSettingName(Settings::Digit settingType);
-    static std::string stringSettingName(Settings::String settingType);
+    static float_t getSetting(Settings::Digit setting);
+    static std::string getSetting(Settings::String setting);
 
-    static float_t defaultDigitSetting(Settings::Digit setting);
-    static std::string defaultStringSetting(Settings::String setting);
+    static void saveSetting(Settings::Digit setting, float_t value);
+    static void saveSetting(Settings::String setting, std::string value);
+private:
+    static std::string settingName(Settings::Digit settingType);
+    static std::string settingName(Settings::String settingType);
+
+    static float_t defaultSetting(Settings::Digit setting);
+    static std::string defaultSetting(Settings::String setting);
 
     constexpr static char TAG[] = "SETTINGS";
 };

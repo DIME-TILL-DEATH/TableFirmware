@@ -13,6 +13,8 @@
 
 #include "filemanager.hpp"
 
+#include "settings.hpp"
+
 using namespace std;
 
 FileManager::FileManager()
@@ -28,7 +30,7 @@ FM_RESULT FileManager::connectSDCard()
         return FM_ERROR;
     }
 
-    // Info. Don't need whth application:
+    // Info. Don't need in application:
     /*
     DIR* dir;
     dir = opendir(MOUNT_POINT"/");
@@ -120,7 +122,6 @@ void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
     for(auto it=playlist.begin(); it!=playlist.end(); it++)
     {
         fputs((*it).data(), playlistFile);
-        //printf("%s  ", (*it).c_str());
     }
     ESP_LOGI(TAG, "New playlist wirtten");
     fclose(playlistFile);
@@ -143,7 +144,7 @@ FM_RESULT FileManager::loadNextPrint()
 
 FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
 {
-    fclose(currentPrintFile); // close previous
+    fclose(currentPrintFile);
 
     if(num > playlist.size()-1)
     {
@@ -151,6 +152,8 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     }
 
     curPlsPos = num;
+
+    Settings::saveSetting(Settings::Digit::LAST_PLAYLIST_POSITION, curPlsPos);
 
     string currentFileName;
     if(playlist.size()>0)
@@ -167,12 +170,9 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
         return FM_ERROR;
     }
 
-     ESP_LOGE(TAG, "File opened");
-
     char* result;
     char readBuf[512];
     m_pointsNum = 0;
-    ESP_LOGE(TAG, "Counting points %d", m_pointsNum);
     do
     {
         result = fgets(readBuf, 512, currentPrintFile);
@@ -180,7 +180,6 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
          
     } while (result);
     fseek(currentPrintFile, 0, SEEK_SET);
-    ESP_LOGE(TAG, "Finish ounting points %d", m_pointsNum);
     
     ESP_LOGI(TAG, "File %s succesfully opened. Point num: %d Printing...", currentFileName.c_str(), m_pointsNum);
     return FM_OK;

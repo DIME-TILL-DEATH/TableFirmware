@@ -82,8 +82,8 @@ void file_task(void *arg)
 {
   FM_RESULT result;
 
-  std::string playlistName = Settings::getStringSetting(Settings::String::PLAYLIST);
-  uint32_t playlstPosition = Settings::getDigitSetting(Settings::Digit::LAST_PLAYLIST_POSITION);
+  std::string playlistName = Settings::getSetting(Settings::String::PLAYLIST);
+  uint32_t playlstPosition = Settings::getSetting(Settings::Digit::LAST_PLAYLIST_POSITION);
 
   fileManager.loadPlaylist(playlistName, playlstPosition);
   ESP_LOGI("FM TASK", "Loading playlist %s in position %d", playlistName.c_str(), playlstPosition);

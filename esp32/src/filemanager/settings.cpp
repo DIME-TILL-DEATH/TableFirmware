@@ -6,12 +6,12 @@
 #include "settings.hpp"
 #include "filemanager.hpp"
 
-float_t Settings::getDigitSetting(Settings::Digit setting)
+float_t Settings::getSetting(Settings::Digit setting)
 {
-    float_t settingValue=defaultDigitSetting(setting);;
+    float_t settingValue=defaultSetting(setting);;
     char buf[512];
 
-    std::string settingRequest = digitSettingName(setting) + "=" + "%f";
+    std::string settingRequest = settingName(setting) + "=" + "%f";
 
     std::string fullFileName;
     fullFileName = FileManager::mountPoint + "settings.ini";
@@ -37,12 +37,13 @@ float_t Settings::getDigitSetting(Settings::Digit setting)
     fclose(file);
     return settingValue;
 }
-std::string Settings::getStringSetting(Settings::String setting)
+
+std::string Settings::getSetting(Settings::String setting)
 {
-    std::string settingValue=defaultStringSetting(setting);;
+    std::string settingValue=defaultSetting(setting);;
     char buf[512];
 
-    std::string settingRequest = stringSettingName(setting) + "=" + "%s";
+    std::string settingRequest = settingName(setting) + "=" + "%s";
 
     std::string fullFileName;
     fullFileName = FileManager::mountPoint + "settings.ini";
@@ -71,7 +72,69 @@ std::string Settings::getStringSetting(Settings::String setting)
     return settingValue;
 }
 
-std::string Settings::digitSettingName(Settings::Digit settingType)
+void Settings::saveSetting(Settings::Digit setting, float_t value)
+{
+    std::string originalFilePath = FileManager::mountPoint + "settings.ini";
+    FILE* originalfile = fopen(originalFilePath.c_str(), "r");
+
+    std::string tmpFilePath = FileManager::mountPoint + "replace.tmp";
+    FILE* tempFile = fopen(tmpFilePath.c_str(), "w");
+
+    char buf[512];
+
+    while(fgets(buf, 512, originalfile))
+    {
+        std::string readResult(buf);
+        if(readResult.compare(0, settingName(setting).size(), settingName(setting)) == 0)
+        {
+            std::string resultSettingString = settingName(setting) + "=" + std::to_string(value);
+            fputs(resultSettingString.c_str(), tempFile);
+        }
+        else
+        {
+            fputs(buf, tempFile);
+        }
+    }
+
+    fclose(originalfile);
+    fclose(tempFile);
+
+    remove(originalFilePath.c_str());
+    rename(tmpFilePath.c_str(), originalFilePath.c_str());
+}
+
+void Settings::saveSetting(Settings::String setting, std::string value)
+{
+    std::string originalFilePath = FileManager::mountPoint + "settings.ini";
+    FILE* originalfile = fopen(originalFilePath.c_str(), "r");
+
+    std::string tmpFilePath = FileManager::mountPoint + "replace.tmp";
+    FILE* tempFile = fopen(tmpFilePath.c_str(), "w");
+
+    char buf[512];
+
+    while(fgets(buf, 512, originalfile))
+    {
+        std::string readResult(buf);
+        if(readResult.compare(0, settingName(setting).size(), settingName(setting)) == 0)
+        {
+            std::string resultSettingString = settingName(setting) + "=" + value;
+            fputs(resultSettingString.c_str(), tempFile);
+        }
+        else
+        {
+            fputs(buf, tempFile);
+        }
+    }
+
+    fclose(originalfile);
+    fclose(tempFile);
+
+    remove(originalFilePath.c_str());
+    rename(tmpFilePath.c_str(), originalFilePath.c_str());
+}
+
+std::string Settings::settingName(Settings::Digit settingType)
 {
     switch(settingType)
     {
@@ -84,7 +147,7 @@ std::string Settings::digitSettingName(Settings::Digit settingType)
     return "";
 }
 
-float_t Settings::defaultDigitSetting(Settings::Digit settingType)
+float_t Settings::defaultSetting(Settings::Digit settingType)
 {
     switch(settingType)
     {
@@ -97,7 +160,7 @@ float_t Settings::defaultDigitSetting(Settings::Digit settingType)
     return 0;
 }
 
-std::string Settings::stringSettingName(Settings::String settingType)
+std::string Settings::settingName(Settings::String settingType)
 {
     switch(settingType)
     {
@@ -109,7 +172,7 @@ std::string Settings::stringSettingName(Settings::String settingType)
     return "";
 }
 
-std::string Settings::defaultStringSetting(Settings::String settingType)
+std::string Settings::defaultSetting(Settings::String settingType)
 {
     switch(settingType)
     {
