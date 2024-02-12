@@ -247,7 +247,15 @@ void FrameParser::parseFirmwareActions()
 
     case Requests::Firmware::FIRMWARE_UPDATE:
     {
-        FW_DoFirmwareUpdate();
+        // run update on the answer side, but form stop printer command here
+        NetComm::TransportCommand* stopPrintCommand = new NetComm::TransportCommand(0, Requests::Transport::PAUSE_PRINTING);
+        parsedCommands.push_back(stopPrintCommand);
+        break;
+    }
+
+    case Requests::Firmware::ESP_RESTART:
+    {
+        FW_RestartEsp();
         break;
     }
     }

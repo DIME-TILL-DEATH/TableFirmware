@@ -128,7 +128,17 @@ void PrinterPins::srWrite()
     t.flags=SPI_TRANS_USE_TXDATA;
     t.length=8;                
     t.tx_data[0] = srWord;               
-           
+
+   // while(polling) 
+    //{
+    //    ESP_LOGE("PRINTER PINS", "WAIT FOR POLLING");
+   // }
+   // polling = true;     
     ret=spi_device_polling_transmit(spiToSR, &t);  
-    assert(ret==ESP_OK);            
+   // polling = false;
+
+    if(ret!=ESP_OK)
+    {
+        ESP_LOGE("PRINTER PINS", "Write request while polling");
+    }        
 }

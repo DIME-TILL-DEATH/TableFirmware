@@ -18,7 +18,8 @@ void processNetRequest(NetComm::TransportCommand* command)
     {
         case Requests::Transport::PAUSE_PRINTING:
         {
-            
+            ESP_LOGI("PRINTER TASK", "Request pause print");
+            printer.pause();
             break;
         }
 

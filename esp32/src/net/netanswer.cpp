@@ -338,8 +338,11 @@ void processFirmwareCommand(NetComm::FirmwareCommand* firmwareAnswer, int socket
 
     case Requests::Firmware::FIRMWARE_UPDATE:
     {
+        int resultUpdate = FW_DoFirmwareUpdate();
+
         answerFrameHeader.structData.action = (uint8_t)Requests::Firmware::FIRMWARE_UPDATE;
         answerFrameHeader.structData.frameSize = sizeof(FrameHeader);
+        answerFrameHeader.structData.data0 = resultUpdate;
 
         ESP_LOGI("UPDATE", "Send frame FIRMWARE_UPDATE");
 
@@ -347,6 +350,12 @@ void processFirmwareCommand(NetComm::FirmwareCommand* firmwareAnswer, int socket
         memcpy(buffer, answerFrameHeader.rawData, sizeof(FrameHeader));
         sendData(socket, buffer, sizeof(FrameHeader));
         
+        break;
+    }
+
+    case Requests::Firmware::ESP_RESTART:
+    {
+        // do nothing
         break;
     }
     }

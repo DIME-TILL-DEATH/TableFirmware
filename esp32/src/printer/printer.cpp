@@ -434,7 +434,7 @@ void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
     fiTimer->setInterval(timerFiPeriod);
 }
 
-void Printer::makeRStep()
+void IRAM_ATTR Printer::makeRStep()
 {
     if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || m_state == PrinterState::CORRECTING_CENTER)
     {
@@ -463,7 +463,7 @@ void Printer::makeRStep()
     }
 }
 
-void Printer::makeFiStep()
+void IRAM_ATTR Printer::makeFiStep()
 {
     if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || m_state == PrinterState::CORRECTING_CENTER)
     {

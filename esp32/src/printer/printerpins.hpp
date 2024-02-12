@@ -44,6 +44,8 @@ class PrinterPins
 
         uint8_t srWord{0};
         void srWrite();
+
+        bool polling{false}; // flag for different threads
 };
 
 };

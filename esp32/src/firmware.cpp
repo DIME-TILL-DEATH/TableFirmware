@@ -18,7 +18,7 @@ static const char *TAG = "FIRMWARE";
 #define BUFFSIZE 1024
 static char ota_write_data[BUFFSIZE + 1] = { 0 };
 
-void FW_DoFirmwareUpdate()
+bool FW_DoFirmwareUpdate()
 {
     esp_err_t err;
     /* update handle : set by esp_ota_begin(), must be freed via esp_ota_end() */
@@ -54,7 +54,7 @@ void FW_DoFirmwareUpdate()
     if(fimwareFile == NULL)
     {
         ESP_LOGE(TAG, "Can't open firmware file");
-        return;
+        return false;
     }
 
     while (1) 
@@ -93,14 +93,14 @@ void FW_DoFirmwareUpdate()
                             ESP_LOGW(TAG, "New version is the same as invalid version.");
                             ESP_LOGW(TAG, "Previously, there was an attempt to launch the firmware with %s version, but it failed.", invalid_app_info.version);
                             ESP_LOGW(TAG, "The firmware has been rolled back to the previous version.");
-                            return;
+                            return false;
                         }
                     }
 
                     if (memcmp(new_app_info.version, running_app_info.version, sizeof(new_app_info.version)) == 0) 
                     {
                         ESP_LOGW(TAG, "Current running version is the same as a new. We will not continue the update.");
-                        return;
+                        return false;
                     }
 
                     image_header_was_checked = true;
@@ -110,7 +110,7 @@ void FW_DoFirmwareUpdate()
                     {
                         ESP_LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
                         esp_ota_abort(update_handle);
-                        return;
+                        return false;
                     }
                     ESP_LOGI(TAG, "esp_ota_begin succeeded");
                 } 
@@ -118,7 +118,7 @@ void FW_DoFirmwareUpdate()
                 {
                     ESP_LOGE(TAG, "received package is not fit len");
                     esp_ota_abort(update_handle);
-                    return;
+                    return false;
                 }
             }
 
@@ -127,7 +127,7 @@ void FW_DoFirmwareUpdate()
             {
                 ESP_LOGE(TAG, "esp_ota_write() error");
                 esp_ota_abort(update_handle);
-                return;
+                return false;
             }
             binary_file_length += data_read;
             ESP_LOGD(TAG, "Written image length %d", binary_file_length);
@@ -152,16 +152,23 @@ void FW_DoFirmwareUpdate()
         {
             ESP_LOGE(TAG, "esp_ota_end failed (%s)!", esp_err_to_name(err));
         }
-        return;
+        return false;
     }
 
     err = esp_ota_set_boot_partition(update_partition);
     if (err != ESP_OK) 
     {
         ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(err));
-        return;
+        return false;
     }
 
+    ESP_LOGI(TAG, "OTA update successfully finished");
+    //esp_restart();
+    return true;
+}
+
+void FW_RestartEsp()
+{
     ESP_LOGI(TAG, "Prepare to restart system!");
     esp_restart();
 }

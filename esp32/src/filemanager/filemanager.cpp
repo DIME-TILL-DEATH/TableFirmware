@@ -252,16 +252,20 @@ int32_t FileManager::fileWrite(std::string fileName, const char* writeType, void
     FILE* file = fopen(fileName.c_str(), writeType);
     if(file != NULL)
     {
-        size_t bytesWritten = fwrite(data_ptr, sizeof(uint8_t), dataSize, file);
+        // size_t bytesWritten = fwrite(data_ptr, sizeof(uint8_t), dataSize, file);
+        fwrite(data_ptr, sizeof(uint8_t), dataSize, file);
 
-        ESP_LOGI("FileManager::fileWrite", "Part of file %s written, part size %d:", fileName.c_str(), bytesWritten);
+        long fileSize = ftell(file);
+
+        ESP_LOGI("FileManager::fileWrite", "Part of file %s written, file size %d:", fileName.c_str(), fileSize);
         fclose(file);
 
-        return bytesWritten;
+        return fileSize;
     }
     else
     {
         ESP_LOGE("FileManager::fileWrite", "Error opening file to append %s", fileName.c_str());
+        fclose(file);
         return -1;
     }
 }
