@@ -8,6 +8,8 @@
 #include "netcomm/abstractcommand.hpp"
 #include "netcomm/transportcommand.hpp"
 
+#include "filemanager/settings.hpp"
+
 Printer printer;
 
 void processNetRequest(NetComm::TransportCommand* command)
@@ -32,10 +34,13 @@ void processNetRequest(NetComm::TransportCommand* command)
         case Requests::Transport::SET_PRINT_SPEED:
         {
             NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::SET_PRINT_SPEED, NetComm::ANSWER);
-            printer.setSpeed(command->printSpeed);
-            answer->printSpeed = printer.getSpeed();
-            ESP_LOGI("PRINTER TASK", "Settled speed: %f", printer.getSpeed());
+            float_t newPrintSpeed = command->printSpeed;
+            printer.setSpeed(newPrintSpeed);
+            answer->printSpeed = newPrintSpeed;
+            ESP_LOGI("PRINTER TASK", "Settled speed: %f", newPrintSpeed);
             xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
+
+            Settings::saveSetting(Settings::Digit::PRINT_SPEED, newPrintSpeed);
             break;         
         }
 

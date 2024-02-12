@@ -35,9 +35,9 @@ void Printer::initPins(gpio_isr_t endStops_cb)
 
 void Printer::loadSettings()
 {
-    speed = Settings::getDigitSetting(Settings::Digit::PRINT_SPEED);
-    coordSysRotation = (Settings::getDigitSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI_2;
-    printScaleCoef = Settings::getDigitSetting(Settings::Digit::SCALE_COEF);
+    speed = Settings::getSetting(Settings::Digit::PRINT_SPEED);
+    coordSysRotation = (Settings::getSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI_2;
+    printScaleCoef = Settings::getSetting(Settings::Digit::SCALE_COEF);
 
     ESP_LOGI(TAG, "Loading printer settings. Speed: %f, Rotation: %f, Scale: %f", speed, coordSysRotation, printScaleCoef);  
 }
