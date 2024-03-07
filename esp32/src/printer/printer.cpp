@@ -36,8 +36,10 @@ void Printer::initPins(gpio_isr_t endStops_cb)
 void Printer::loadSettings()
 {
     speed = Settings::getSetting(Settings::Digit::PRINT_SPEED);
-    coordSysRotation = (Settings::getSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI_2;
+    coordSysRotation = (Settings::getSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI;
     printScaleCoef = Settings::getSetting(Settings::Digit::SCALE_COEF);
+
+    rMoveDiapason = rMoveDiapason * printScaleCoef;
 
     ESP_LOGI(TAG, "Loading printer settings. Speed: %f, Rotation: %f, Scale: %f", speed, coordSysRotation, printScaleCoef);  
 }
@@ -57,38 +59,34 @@ void Printer::findCenter()
 
     fiCenterTrigger = false;
     rCenterTrigger = false;
-
-    printerPins->rDirState(Pins::PinState::RESET);
-    printerPins->fiDirState(Pins::PinState::SET);
+    setState(PrinterState::SEARCH_FI_ZERO);
 
 #ifdef GLOBAL_IGNORE_ENDSTOPS
-    if(true)
-    {
+    fiCenterTrigger = true;
 #else
     if(gpio_get_level(PIN_ENDSTOP_FI) == Pins::PinState::SET)
     {
-#endif   
-      fiCenterTrigger = true;
+        setStep(0, M_PI/8, 2);
+        setState(PrinterState::RESCAN_FI_ZERO);
     }
     else
     {
-        setStep(0, -2*M_PI, 30);
+        setStep(0, -2*M_PI, 20);
     }
+#endif  
 
 #ifdef GLOBAL_IGNORE_ENDSTOPS
-    if(true)
-    {
+    rCenterTrigger = true;
 #else
     if(gpio_get_level(PIN_ENDSTOP_R) == Pins::PinState::RESET)
-    {
-#endif   
+    { 
        rCenterTrigger = true;
     }
+#endif 
 
     gpio_intr_enable(PIN_ENDSTOP_R);
     gpio_intr_enable(PIN_ENDSTOP_FI);
-
-    setState(PrinterState::SEARCH_FI_ZERO);
+  
     resumeThread();
 }
 
@@ -118,7 +116,7 @@ void Printer::printRoutine()
                 {
                     case GCode::GCommType::M51:
                     {
-                        findCenter();
+                        //findCenter();
                         break;
                     }
                     case GCode::GCommType::G1:
@@ -258,14 +256,38 @@ void Printer::printRoutine()
             break;
         }
 
+        case PrinterState::RESCAN_FI_ZERO:
+        {
+            if(fiTicksCounter == 0)
+            {
+                setStep(0, -2*M_PI, 25);
+                setState(PrinterState::SEARCH_FI_ZERO);
+                printf("Fi rescaning\r\n");
+                fiCenterTrigger = false;
+            }
+            break;
+        }
+
         case PrinterState::SEARCH_FI_ZERO:
         {
             if(fiCenterTrigger)
-            {
-                setStep(-rMoveDiapason * 1.2, 0, 15); // 20% margin
+            {               
+                setStep(-rMoveDiapason * 1.1, 0, 7.5); // 10% margin
                 setState(PrinterState::SEARCH_R_ZERO);
+                printf("Fi zeroed\r\n");
+            }
+            break;
+        }
 
-                printf("Fi zeroing\r\n");
+        case PrinterState::RESCAN_R_ZERO:
+        {
+            if(rTicksCounter == 0)
+            {
+                setStep(0, M_PI/4, 2.5); 
+                setState(PrinterState::RESCAN_FI_ZERO);
+                rCenterTrigger = false;
+                fiCenterTrigger = false;
+                printf("R rescaning\r\n");
             }
             break;
         }
@@ -279,33 +301,41 @@ void Printer::printRoutine()
                 gpio_intr_disable(PIN_ENDSTOP_R);
                 gpio_intr_disable(PIN_ENDSTOP_FI);
 
-                printf("R zeroing\r\n");
+                printf("R zeroed\r\n");
 
-                // TODO: find real center from sensor data, not fixed move
-                rTicksCounter = lengthToMotorTicks(7.5); //setStep()?
+                setStep(-7.5, 0, 2);
                 setState(PrinterState::CORRECTING_CENTER);
+                break;
+            }
+            else if(rTicksCounter == 0)
+            {
+                ESP_LOGE(TAG, "R center nor found! Pad is out of bounds. Correcting\r\n");
+                setStep(rMoveDiapason * 1.5, 0, 2 * rMoveDiapason / 370);
+                setState(PrinterState::RESCAN_R_ZERO);
             }
             break;
         }
 
         case PrinterState::CORRECTING_CENTER:
         {
-            if(rTicksCounter==0)
+            if(rTicksCounter == 0)
             {
                 currentPolarPosition.r = 0;
                 currentPolarPosition.fi = 0;
 
-                setStep(0, coordSysRotation, 30);
-                setState(PrinterState::IDLE);
+                setStep(0, coordSysRotation, 12.5 * coordSysRotation / M_PI );
+                setState(PrinterState::ROTATE_COORD_SYS);
+                printf("Center corrected\r\n");
             }
             break;
         }
 
         case PrinterState::ROTATE_COORD_SYS:
         {
-            if(fiTicksCounter)
+            if(fiTicksCounter == 0)
             {
                 setState(PrinterState::IDLE);
+                printf("Coord sys rotated\r\n");
             }
             break;
         }
@@ -436,7 +466,10 @@ void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
 
 void IRAM_ATTR Printer::makeRStep()
 {
-    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || m_state == PrinterState::CORRECTING_CENTER)
+    if(m_state == PrinterState::PRINTING || 
+    m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || 
+    m_state == PrinterState::CORRECTING_CENTER || m_state == PrinterState::ROTATE_COORD_SYS ||
+    m_state == PrinterState::RESCAN_FI_ZERO || m_state == PrinterState::RESCAN_R_ZERO)
     {
         if(rTicksCounter>0)
         {
@@ -465,7 +498,10 @@ void IRAM_ATTR Printer::makeRStep()
 
 void IRAM_ATTR Printer::makeFiStep()
 {
-    if(m_state == PrinterState::PRINTING || m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || m_state == PrinterState::CORRECTING_CENTER)
+    if(m_state == PrinterState::PRINTING || 
+    m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || 
+    m_state == PrinterState::CORRECTING_CENTER || m_state == PrinterState::ROTATE_COORD_SYS ||
+    m_state == PrinterState::RESCAN_FI_ZERO || m_state == PrinterState::RESCAN_R_ZERO)
     {
         if(fiTicksCounter>0)
         {

@@ -16,18 +16,6 @@
 #include "gcode/g1comm.hpp"
 #include "gcode/g4comm.hpp"
 
-typedef enum
-{
-    ERROR = 0,
-    IDLE,
-    SET_POINT,
-    PRINTING,
-    SET_STEP,
-    SEARCH_R_ZERO,
-    SEARCH_FI_ZERO,
-    CORRECTING_CENTER
-}PrinterState;
-
 class Printer
 {
 public:
@@ -71,8 +59,10 @@ private:
         SET_POINT,
         SET_STEP,
         PRINTING,
-        SEARCH_R_ZERO,
         SEARCH_FI_ZERO,
+        RESCAN_FI_ZERO,
+        SEARCH_R_ZERO,
+        RESCAN_R_ZERO,
         CORRECTING_CENTER,
         ROTATE_COORD_SYS,
         PAUSE
@@ -111,7 +101,7 @@ private:
     float_t coordSysRotation;
     float_t printScaleCoef;
 
-    uint16_t rMoveDiapason = 270;
+    uint16_t rMoveDiapason = 370;
 
     void abortPoint();
 

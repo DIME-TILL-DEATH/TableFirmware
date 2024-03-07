@@ -59,6 +59,8 @@ bool firstCommRecv = false;
 void printer_task(void *arg)
 {
   Printer_Init();
+
+  printer.findCenter();
   
   for(;;)
   { 
