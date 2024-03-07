@@ -84,8 +84,8 @@ void WIFI_Init(void)
                                                         NULL,
                                                         NULL));
 
-    // std::string wifiSSID = Settings::getStringSetting(Settings::String::WIFI_SSID);
-    // std::string wifiPassword = Settings::getStringSetting(Settings::String::WIFI_PASSWORD);
+    //std::string wifiSSID = Settings::getSetting(Settings::String::WIFI_SSID);
+    //std::string wifiPassword = Settings::getSetting(Settings::String::WIFI_PASSWORD);
     std::string wifiSSID = "Kinetic_table";
     std::string wifiPassword = "";
 

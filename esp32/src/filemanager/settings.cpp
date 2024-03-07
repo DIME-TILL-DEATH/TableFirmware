@@ -87,7 +87,7 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
         std::string readResult(buf);
         if(readResult.compare(0, settingName(setting).size(), settingName(setting)) == 0)
         {
-            std::string resultSettingString = settingName(setting) + "=" + std::to_string(value);
+            std::string resultSettingString = settingName(setting) + "=" + std::to_string(value) + "\n";
             fputs(resultSettingString.c_str(), tempFile);
         }
         else

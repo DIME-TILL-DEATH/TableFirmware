@@ -38,12 +38,12 @@ extern "C" void app_main(void)
   fileReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
   netAnswQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
 
-
-
   while(fileManager.connectSDCard() != FM_OK)
   {
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
+
+  
 
   if(gcodesQueue != NULL)
   {
