@@ -11,8 +11,8 @@
 #include "requestactions.h"
 
 #include "projdefines.h"
-#include "printer/printsequence.hpp"
-#include "printer/printertask.hpp"
+#include "hardware/printsequence.hpp"
+#include "hardware/hwtask.hpp"
 #include "filemanager/filemanager.hpp"
 #include "netcomm/abstractcommand.hpp"
 #include "netcomm/playlistcommand.hpp"

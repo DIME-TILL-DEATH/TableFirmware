@@ -10,7 +10,7 @@
 
 #include "esp_log.h"
 
-void printer_task(void *arg);
+void hardware_task(void *arg);
 
 extern QueueHandle_t printReqQueue, netAnswQueue, gcodesQueue;
 extern FileManager fileManager;

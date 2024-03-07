@@ -1,7 +1,7 @@
 #ifndef PRINTSEQEUNCE_HPP
 #define PRINTSEQUENCE_HPP
 
-#include "printer/printer.hpp"
+#include "hardware/printer.hpp"
 
 extern Printer printer;
 void Printer_Init();

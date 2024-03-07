@@ -14,8 +14,8 @@
 #include "projdefines.h"
 #include "firmware.hpp"
 
-#include "printer/printsequence.hpp"
-#include "printer/printertask.hpp"
+#include "hardware/printsequence.hpp"
+#include "hardware/hwtask.hpp"
 #include "filemanager/filetask.hpp"
 #include "netcomm/abstractcommand.hpp"
 
@@ -43,12 +43,10 @@ extern "C" void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 
-  
-
   if(gcodesQueue != NULL)
   {
     xTaskCreatePinnedToCore(file_task, "file_manager", 4096, NULL, PRIORITY_FILE_MANAGER_TASK, NULL, 1);
-    xTaskCreatePinnedToCore(printer_task, "printer", 4096, NULL, PRIORITY_PRINTER_TASK, NULL, 1);
+    xTaskCreatePinnedToCore(hardware_task, "printer", 4096, NULL, PRIORITY_PRINTER_TASK, NULL, 1);
   }
   else
   {

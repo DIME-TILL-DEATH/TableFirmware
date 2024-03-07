@@ -1,4 +1,4 @@
-#include "printertask.hpp"
+#include "hwtask.hpp"
 
 #include "requestactions.h"
 #include "projdefines.h"
@@ -11,6 +11,11 @@
 #include "filemanager/settings.hpp"
 
 Printer printer;
+
+void LED_Init()
+{
+
+}
 
 void processNetRequest(NetComm::TransportCommand* command)
 {
@@ -56,9 +61,10 @@ void processNetRequest(NetComm::TransportCommand* command)
 }
 
 bool firstCommRecv = false;
-void printer_task(void *arg)
+void hardware_task(void *arg)
 {
   Printer_Init();
+  LED_Init();
 
   printer.findCenter();
   

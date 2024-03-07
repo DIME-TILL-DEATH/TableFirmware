@@ -129,9 +129,10 @@ void PrinterPins::srWrite()
     t.length=8;                
     t.tx_data[0] = srWord;               
 
-    while(polling) 
+    if(polling) 
     {
        ESP_LOGE("PRINTER PINS", "WAIT FOR POLLING");
+       return;
     }
     polling = true;     
     ret=spi_device_polling_transmit(spiToSR, &t);  
