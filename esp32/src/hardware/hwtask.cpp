@@ -1,8 +1,12 @@
 #include "hwtask.hpp"
 
+#include "esp_log.h"
+#include "driver/mcpwm_prelude.h"
+
 #include "requestactions.h"
 #include "projdefines.h"
 #include "printer.hpp"
+#include "ledstrip.hpp"
 #include "printsequence.hpp"
 #include "filemanager/filemanager.hpp"
 #include "netcomm/abstractcommand.hpp"
@@ -10,53 +14,133 @@
 
 #include "filemanager/settings.hpp"
 
+static const char *TAG = "HW TASK";
+
 Printer printer;
+LedStrip* ledStrip;
 
-void LED_Init()
+void processNetRequest(NetComm::HardwareCommand* command)
 {
+    NetComm::HardwareCommand* answer = new NetComm::HardwareCommand(*command);
+    answer->direction = NetComm::ANSWER;
 
-}
-
-void processNetRequest(NetComm::TransportCommand* command)
-{
     switch(command->action())
     {
-        case Requests::Transport::PAUSE_PRINTING:
+        case Requests::Hardware::PAUSE_PRINTING:
         {
-            ESP_LOGI("PRINTER TASK", "Request pause print");
+            delete answer;
+            answer = nullptr;
+
+            ESP_LOGI(TAG, "Request pause print");
             printer.pause();
             break;
         }
 
-        case Requests::Transport::REQUEST_PROGRESS:
+        case Requests::Hardware::REQUEST_PROGRESS:
         {
-            NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::REQUEST_PROGRESS, NetComm::ANSWER);
             answer->progress.currentPoint = printer.currentPrintPointNum();
             answer->progress.printPoints = fileManager.pointsNum();
-            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
             break;
         }
 
-        case Requests::Transport::SET_PRINT_SPEED:
+        case Requests::Hardware::SET_PRINT_SPEED:
         {
-            NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::SET_PRINT_SPEED, NetComm::ANSWER);
             float_t newPrintSpeed = command->printSpeed;
             printer.setSpeed(newPrintSpeed);
             answer->printSpeed = newPrintSpeed;
-            ESP_LOGI("PRINTER TASK", "Settled speed: %f", newPrintSpeed);
-            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
+            ESP_LOGI(TAG, "Settled speed: %f", newPrintSpeed);
 
             Settings::saveSetting(Settings::Digit::PRINT_SPEED, newPrintSpeed);
             break;         
         }
 
-        case Requests::Transport::GET_PRINT_SPEED:
+        case Requests::Hardware::GET_PRINT_SPEED:
         {
-            NetComm::TransportCommand* answer = new NetComm::TransportCommand(0, Requests::Transport::GET_PRINT_SPEED, NetComm::ANSWER);
             answer->printSpeed = printer.getSpeed();
-            xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
             break;
         }
+
+        case Requests::Hardware::SET_LED_BRIGHTNESS:
+        {
+            if(ledStrip)
+            {
+                float_t newBrightness = command->ledBrightness;
+                ledStrip->setBrightness(newBrightness);
+                answer->ledBrightness= newBrightness;
+                ESP_LOGI(TAG, "Settled brightness: %f", newBrightness);
+                Settings::saveSetting(Settings::Digit::LED_BRIGHTNESS, newBrightness);           
+            }
+            break;  
+        }
+
+        case Requests::Hardware::GET_LED_BRIGHTNESS:
+        {
+            if(ledStrip)
+            {
+                answer->ledBrightness = ledStrip->getBrightness();
+            }
+            break;
+        }
+
+        case Requests::Hardware::SET_SCALE_COEFFICIENT:
+        {
+            float_t newScaleCoefficient = command->scaleCoefficient;
+            answer->scaleCoefficient = newScaleCoefficient;
+            ESP_LOGI(TAG, "Settled scale coefficient: %f", newScaleCoefficient);
+            Settings::saveSetting(Settings::Digit::SCALE_COEF, newScaleCoefficient);           
+            break;  
+        }
+
+        case Requests::Hardware::GET_SCALE_COEFFICIENT:
+        {
+            answer->scaleCoefficient = Settings::getSetting(Settings::Digit::SCALE_COEF);
+            break;
+        }
+
+        case Requests::Hardware::SET_ROTATION:
+        {
+            float_t newRotation = command->rotation;
+            answer->rotation = newRotation;
+            ESP_LOGI(TAG, "Settled rotation: %f", newRotation);
+            Settings::saveSetting(Settings::Digit::PRINT_ROTATION, newRotation);           
+            break;  
+        }
+
+        case Requests::Hardware::GET_ROTATION:
+        {
+            answer->rotation = Settings::getSetting(Settings::Digit::PRINT_ROTATION);
+            break;
+        }
+
+        case Requests::Hardware::SET_CORRECTION:
+        {
+            float_t newCorrection = command->correction;
+            answer->scaleCoefficient = newCorrection;
+            ESP_LOGI(TAG, "Settled correction: %f", newCorrection);
+            Settings::saveSetting(Settings::Digit::CORRETION_LENGTH, newCorrection);           
+            break;  
+        }
+
+        case Requests::Hardware::GET_CORRECTION:
+        {
+            answer->correction = Settings::getSetting(Settings::Digit::CORRETION_LENGTH);
+            break;
+        }
+
+        case Requests::Hardware::SET_PAUSE_INTERVAL:
+        {
+            break;
+        }
+
+        case Requests::Hardware::GET_PAUSE_INTERVAL:
+        {
+            break;
+        }
+    }
+
+    if(answer)
+    {
+        xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
     }
 }
 
@@ -64,7 +148,7 @@ bool firstCommRecv = false;
 void hardware_task(void *arg)
 {
   Printer_Init();
-  LED_Init();
+  ledStrip = new LedStrip();
 
   printer.findCenter();
   
@@ -86,7 +170,7 @@ void hardware_task(void *arg)
     }
     printer.printRoutine();
 
-    NetComm::TransportCommand* recvAction;
+    NetComm::HardwareCommand* recvAction;
     portBASE_TYPE xStatus = xQueueReceive(printReqQueue, &recvAction, pdMS_TO_TICKS(0));
     if(xStatus == pdPASS)
     {

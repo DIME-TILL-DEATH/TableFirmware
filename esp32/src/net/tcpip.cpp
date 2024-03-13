@@ -63,7 +63,7 @@ static void socket_recv_task(const int sock)
                 frameParser->parsedCommands.erase(frameParser->parsedCommands.begin());
                 switch(recvComm->commandType())
                 {
-                    case NetComm::TRANSPORT_COMMAND: 
+                    case NetComm::HARDWARE_COMMAND: 
                     {
                         xQueueSendToBack(printReqQueue, &recvComm, pdMS_TO_TICKS(1000)); 
                         break;

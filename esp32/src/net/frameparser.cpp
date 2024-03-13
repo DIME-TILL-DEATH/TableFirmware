@@ -49,9 +49,9 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
                     break;
                 }
 
-                case TRANSPORT_ACTIONS:
+                case HARDWARE_ACTIONS:
                 {
-                    parseTransportActions();
+                    parseHardwareActions();
                     break;
                 }
 
@@ -79,19 +79,10 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
     }
 }
 
-void FrameParser::parseTransportActions()
+void FrameParser::parseHardwareActions()
 {
-    NetComm::TransportCommand* command = new NetComm::TransportCommand(0, (Requests::Transport)lastRecvFrameHeader.action);
+    NetComm::HardwareCommand* command = new NetComm::HardwareCommand(0, lastRecvFrameHeader);
     lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-    switch((Requests::Transport)lastRecvFrameHeader.action)
-    {
-        case Requests::Transport::SET_PRINT_SPEED:
-        {
-            command->printSpeed = (float_t)lastRecvFrameHeader.data0;
-            break;
-        }
-        default: {};
-    }
     parsedCommands.push_back(command);
 }
 
@@ -248,7 +239,7 @@ void FrameParser::parseFirmwareActions()
     case Requests::Firmware::FIRMWARE_UPDATE:
     {
         // run update on the answer side, but form stop printer command here
-        NetComm::TransportCommand* stopPrintCommand = new NetComm::TransportCommand(0, Requests::Transport::PAUSE_PRINTING);
+        NetComm::HardwareCommand* stopPrintCommand = new NetComm::HardwareCommand(0, Requests::Hardware::PAUSE_PRINTING);
         parsedCommands.push_back(stopPrintCommand);
         break;
     }

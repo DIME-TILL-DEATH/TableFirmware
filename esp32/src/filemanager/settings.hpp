@@ -21,7 +21,10 @@ public:
         PRINT_SPEED,
         SCALE_COEF,
         PRINT_ROTATION,
-        LAST_PLAYLIST_POSITION
+        LAST_PLAYLIST_POSITION,
+        LED_BRIGHTNESS,
+        CORRETION_LENGTH,
+        PAUSE_INTERVAL
     };
 
     static float_t getSetting(Settings::Digit setting);

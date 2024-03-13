@@ -26,7 +26,7 @@ private:
     std::vector<uint8_t> lastRecvFrame;
     FrameHeader lastRecvFrameHeader;
 
-    void parseTransportActions();
+    void parseHardwareActions();
     void parsePlaylistActions();
     void parseFileActions();
     void parseFirmwareActions();

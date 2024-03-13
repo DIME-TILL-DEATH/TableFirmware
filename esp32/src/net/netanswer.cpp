@@ -59,54 +59,19 @@ void sendLongVector(int socket, FrameHeader_uni& answerFrameHeader, std::vector<
             curSendBytes += (*curItem).size();
             curItem++;
         }
-        //ESP_LOGI("Answer", "Send part: %d, len: %d", i, curSendBytes);
         sendData(socket, txBuffer, curSendBytes);
         curSendBytes = 0;
     }
 }
 
-void processTransportCommand(NetComm::TransportCommand* transportAnswer, int socket)
+void processHardwareCommand(NetComm::HardwareCommand* hardwareAnswer, int socket)
 {
-    FrameHeader_uni answerFrame;
-    memset(answerFrame.rawData, 0, sizeof(FrameHeader));
-    answerFrame.structData.frameType = FrameType::TRANSPORT_ACTIONS;
+    uint8_t buffer[512];
+    uint32_t dataSize;
 
-    switch(transportAnswer->action())
-    {
-        case Requests::Transport::PAUSE_PRINTING:
-        {
-            
-            break;
-        }
+    hardwareAnswer->formAnswerFrame(buffer, &dataSize);
 
-        case Requests::Transport::REQUEST_PROGRESS:
-        {
-           // ESP_LOGI("Answer", "ready to answer, Cur point: %d, All points: %d", transportAnswer->progress.currentPoint, transportAnswer->progress.printPoints);
-            
-            answerFrame.structData.action = (uint8_t)Requests::Transport::REQUEST_PROGRESS;
-            answerFrame.structData.frameSize = sizeof(FrameHeader);
-            answerFrame.structData.data0 = transportAnswer->progress.currentPoint;    
-            answerFrame.structData.data1 = transportAnswer->progress.printPoints; 
-
-            sendData(socket, answerFrame.rawData, sizeof(FrameHeader));
-            break;
-        }
-
-        case Requests::Transport::SET_PRINT_SPEED:
-        {
-
-        }
-
-        case Requests::Transport::GET_PRINT_SPEED:
-        {
-            answerFrame.structData.action = (uint8_t)Requests::Transport::GET_PRINT_SPEED;
-            answerFrame.structData.frameSize = sizeof(FrameHeader);
-            answerFrame.structData.data0 = (uint32_t)transportAnswer->printSpeed;    
-
-            sendData(socket, answerFrame.rawData, sizeof(FrameHeader));
-            break;
-        }
-    }
+    sendData(socket, buffer, dataSize);
 }
 
 void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket)
@@ -141,9 +106,6 @@ void processPlaylistCommand(NetComm::PlaylistCommand* playlistAnswer, int socket
             printf("\r\n");
 
             sendLongVector(socket, answerFrameHeader, playlist);
-            //ESP_LOGI("Answer", "Send pls req answer, count: %d", playlist->size());
-            sendLongVector(socket, answerFrameHeader, playlist);
-
             break;
         }
 
@@ -366,10 +328,10 @@ void processAnswer(NetComm::AbstractCommand* recvComm, int socket)
     switch (recvComm->commandType())
     {
         case NetComm::ABSTRACT:{break;}
-        case NetComm::TRANSPORT_COMMAND:
+        case NetComm::HARDWARE_COMMAND:
         { 
-            NetComm::TransportCommand* transportAnswer = static_cast<NetComm::TransportCommand*>(recvComm);
-            processTransportCommand(transportAnswer, socket);
+            NetComm::HardwareCommand* hardwareAnswer = static_cast<NetComm::HardwareCommand*>(recvComm);
+            processHardwareCommand(hardwareAnswer, socket);
             break;
         }
         case NetComm::PLAYLIST_COMMAND:

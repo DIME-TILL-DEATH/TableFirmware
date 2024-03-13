@@ -39,6 +39,8 @@ void Printer::loadSettings()
     coordSysRotation = (Settings::getSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI;
     printScaleCoef = Settings::getSetting(Settings::Digit::SCALE_COEF);
 
+    pauseInterval = Settings::getSetting(Settings::Digit::PAUSE_INTERVAL);
+
     rMoveDiapason = rMoveDiapason * printScaleCoef;
 
     ESP_LOGI(TAG, "Loading printer settings. Speed: %f, Rotation: %f, Scale: %f", speed, coordSysRotation, printScaleCoef);  
@@ -140,7 +142,7 @@ void Printer::printRoutine()
                         if(g4Comm)
                         {
                             printf("End of file.\r\n");
-                            pause(2500); //g4Comm->pause()
+                            pause(pauseInterval); //g4Comm->pause()
                         }
                         break;
                     }

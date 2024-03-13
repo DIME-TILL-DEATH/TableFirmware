@@ -81,6 +81,7 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
     FILE* tempFile = fopen(tmpFilePath.c_str(), "w");
 
     char buf[512];
+    bool settingFinded = false;
 
     while(fgets(buf, 512, originalfile))
     {
@@ -89,11 +90,19 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
         {
             std::string resultSettingString = settingName(setting) + "=" + std::to_string(value) + "\n";
             fputs(resultSettingString.c_str(), tempFile);
+            settingFinded=true;
         }
         else
         {
             fputs(buf, tempFile);
         }
+    }
+
+    if(!settingFinded)
+    {
+        std::string resultSettingString = settingName(setting) + "=" + std::to_string(value) + "\n";
+        fputs(resultSettingString.c_str(), tempFile);
+        settingFinded=true;
     }
 
     fclose(originalfile);
@@ -112,6 +121,7 @@ void Settings::saveSetting(Settings::String setting, std::string value)
     FILE* tempFile = fopen(tmpFilePath.c_str(), "w");
 
     char buf[512];
+    bool settingFinded = false;
 
     while(fgets(buf, 512, originalfile))
     {
@@ -120,11 +130,18 @@ void Settings::saveSetting(Settings::String setting, std::string value)
         {
             std::string resultSettingString = settingName(setting) + "=" + value;
             fputs(resultSettingString.c_str(), tempFile);
+            settingFinded = true;
         }
         else
         {
             fputs(buf, tempFile);
         }
+    }
+
+    if(!settingFinded)
+    {
+        std::string resultSettingString = settingName(setting) + "=" + value;
+        fputs(resultSettingString.c_str(), tempFile);
     }
 
     fclose(originalfile);
@@ -142,6 +159,9 @@ std::string Settings::settingName(Settings::Digit settingType)
         case Settings::Digit::PRINT_SPEED: return "PRINT_SPEED";
         case Settings::Digit::SCALE_COEF: return "SCALE_COEF";
         case Settings::Digit::LAST_PLAYLIST_POSITION: return "LAST_PLAYLIST_POSITION";
+        case Settings::Digit::LED_BRIGHTNESS: return "LED_BRIGHTNESS";
+        case Settings::Digit::CORRETION_LENGTH: return "CORRECTION_LENGTH";
+        case Settings::Digit::PAUSE_INTERVAL: return "PAUSE_INTERVAL";
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return "";
@@ -155,6 +175,9 @@ float_t Settings::defaultSetting(Settings::Digit settingType)
         case Settings::Digit::PRINT_SPEED: return 25;
         case Settings::Digit::SCALE_COEF: return 1.0;
         case Settings::Digit::LAST_PLAYLIST_POSITION: return 0;
+        case Settings::Digit::LED_BRIGHTNESS: return 0.5;
+        case Settings::Digit::CORRETION_LENGTH: return 0;
+        case Settings::Digit::PAUSE_INTERVAL: return 1000;
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return 0;
