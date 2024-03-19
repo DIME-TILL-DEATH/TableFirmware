@@ -119,6 +119,7 @@ void Printer::printRoutine()
                     case GCode::GCommType::M51:
                     {
                         //findCenter();
+                        pointNum = 1;
                         break;
                     }
                     case GCode::GCommType::G1:

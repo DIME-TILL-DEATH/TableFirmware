@@ -10,7 +10,7 @@
 #include "printsequence.hpp"
 #include "filemanager/filemanager.hpp"
 #include "netcomm/abstractcommand.hpp"
-#include "netcomm/transportcommand.hpp"
+#include "netcomm/hardwarecommand.hpp"
 
 #include "filemanager/settings.hpp"
 
@@ -129,11 +129,16 @@ void processNetRequest(NetComm::HardwareCommand* command)
 
         case Requests::Hardware::SET_PAUSE_INTERVAL:
         {
+            uint32_t newPauseInterval = command->pauseInterval;
+            ESP_LOGI(TAG, "Settled pause interval: %d", newPauseInterval);
+            printer.setPauseInterval(newPauseInterval);
+            Settings::saveSetting(Settings::Digit::PAUSE_INTERVAL, newPauseInterval);       
             break;
         }
 
         case Requests::Hardware::GET_PAUSE_INTERVAL:
         {
+            answer->pauseInterval = printer.getPauseInterval();
             break;
         }
     }

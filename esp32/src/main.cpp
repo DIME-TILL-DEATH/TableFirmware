@@ -30,8 +30,8 @@ extern "C" void app_main(void)
 {
   FW_StartupCheck();
 
-  WIFI_Init();
-  TCPIP_Init();
+  // WIFI_Init();
+  // TCPIP_Init();
 
   gcodesQueue = xQueueCreate(PRINTER_COMM_QUEUE_SIZE, sizeof(GCode::GAbstractComm*));
   printReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
@@ -42,6 +42,10 @@ extern "C" void app_main(void)
   {
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
+  vTaskDelay(pdMS_TO_TICKS(100));
+
+  WIFI_Init();
+  TCPIP_Init();
 
   if(gcodesQueue != NULL)
   {

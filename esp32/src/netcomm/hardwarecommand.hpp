@@ -1,5 +1,5 @@
-#ifndef TRANSPORTCOMMAND_H
-#define TRANSPORTCOMMAND_H
+#ifndef HARDWARECOMMAND_H
+#define HARDWARECOMMAND_H
 
 #include <math.h>
 

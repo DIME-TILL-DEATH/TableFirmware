@@ -40,6 +40,9 @@ public:
     void setSpeed(float_t newSpeed) {speed = newSpeed;};
     float_t getSpeed() {return speed;};
 
+    void setPauseInterval(uint32_t newPauseInterval) {pauseInterval = newPauseInterval;};
+    uint32_t getPauseInterval() {return pauseInterval;};
+
     void stop();
     void pause(uint32_t time);
     void pause();
