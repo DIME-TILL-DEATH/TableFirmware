@@ -103,6 +103,8 @@ private:
     float_t speed;
     float_t coordSysRotation;
     float_t printScaleCoef;
+    float_t correctionLength{0};
+
     uint32_t pauseInterval;
 
     uint16_t rMoveDiapason = 370;

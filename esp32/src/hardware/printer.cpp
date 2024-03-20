@@ -38,7 +38,7 @@ void Printer::loadSettings()
     speed = Settings::getSetting(Settings::Digit::PRINT_SPEED);
     coordSysRotation = (Settings::getSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI;
     printScaleCoef = Settings::getSetting(Settings::Digit::SCALE_COEF);
-
+    correctionLength = Settings::getSetting(Settings::Digit::CORRETION_LENGTH);
     pauseInterval = Settings::getSetting(Settings::Digit::PAUSE_INTERVAL);
 
     rMoveDiapason = rMoveDiapason * printScaleCoef;
@@ -306,7 +306,7 @@ void Printer::printRoutine()
 
                 printf("R zeroed\r\n");
 
-                setStep(-7.5, 0, 2);
+                setStep(correctionLength, 0, 2);
                 setState(PrinterState::CORRECTING_CENTER);
                 break;
             }
