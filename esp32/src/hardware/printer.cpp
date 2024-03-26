@@ -179,13 +179,14 @@ void Printer::printRoutine()
             stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2)));// / speed;
 
             // INFO block==========
-               // printf(", point num: %d\r\n", pointNum);
+            //    printf("Point num: %d\r\n", pointNum);
 
 
-//                printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
-//                printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
-//                printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
-//                printf("\r\n");
+            //    printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
+            //    printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
+            //    printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), 
+            //    targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
+            //    printf("\r\n");
             //=================================
 
             pointNum++;
@@ -201,11 +202,12 @@ void Printer::printRoutine()
 
             if((fabs(targetPosition.x - currentPosition.x) < minErrX) && (fabs(targetPosition.y - currentPosition.y) < minErrY))
             {
+                currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
                 setState(PrinterState::HANDLE_COMMAND);
             }
             else
             {
-                Coord::DecartPoint stepPosition{currentPosition.x + stepX, currentPosition.y +stepY};
+                Coord::DecartPoint stepPosition{currentPosition.x + stepX, currentPosition.y + stepY};
 
                 Coord::PolarPoint curPolarPoint = Coord::convertDecartToPolar(currentPosition);
                 Coord::PolarPoint stepPolarPoint = Coord::convertDecartToPolar(stepPosition);
@@ -223,6 +225,8 @@ void Printer::printRoutine()
                 }
 
                 setStep(deltaR, deltaFi, stepTime/speed);
+
+                //printf("current fi: %lf, delta fi: %lf\r\n", currentPolarPosition.fi* 360 / (M_PI * 2), deltaFi * 360 / (M_PI * 2));
 
                 currentPosition.x += stepX;
                 currentPosition.y += stepY;
@@ -246,16 +250,18 @@ void Printer::printRoutine()
         {
             if(rTicksCounter==0 && fiTicksCounter==0)
             {
-                setState(PrinterState::SET_STEP);          
+                setState(PrinterState::SET_STEP);   
+                       
             }
 
-            if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
-            {
-                rTicksCounter = 0;
-                fiTicksCounter = 0;
-                currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-                setState(PrinterState::HANDLE_COMMAND);
-            }
+            // if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
+            // {
+            //     printf("===coords compare finish\r\n");
+            //     rTicksCounter = 0;
+            //     fiTicksCounter = 0;
+            //     currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
+            //     setState(PrinterState::HANDLE_COMMAND);
+            // }
             break;
         }
 
@@ -337,6 +343,8 @@ void Printer::printRoutine()
         {
             if(fiTicksCounter == 0)
             {
+                currentPolarPosition.r = 0;
+                currentPolarPosition.fi = 0;
                 setState(PrinterState::IDLE);
                 printf("Coord sys rotated\r\n");
             }
