@@ -19,6 +19,7 @@ public:
 
     void formAnswerFrame(uint8_t* data, uint32_t* size);
 
+    // all to pointer on data?
     struct 
     {
         uint16_t currentPoint;
@@ -26,12 +27,13 @@ public:
     }progress;
 
     uint32_t pauseInterval;
-
     float_t printSpeed;
     float_t ledBrightness;
     float_t scaleCoefficient;
     float_t rotation;
     float_t correction;
+    
+    uint16_t fiGear2Teeths;
 
     Requests::Hardware action() {return m_action;};
 private:

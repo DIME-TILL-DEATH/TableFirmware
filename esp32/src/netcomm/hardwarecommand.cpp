@@ -159,6 +159,12 @@ void HardwareCommand::formAnswerFrame(uint8_t* data, uint32_t* size)
             answerFrame.structData.data0 = pauseInterval;    
             break;
         }
+
+        case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT:
+        {
+            answerFrame.structData.data0 = fiGear2Teeths;    
+            break;
+        }
     }
 
     memcpy(data, answerFrame.rawData, sizeof(FrameHeader)) ;

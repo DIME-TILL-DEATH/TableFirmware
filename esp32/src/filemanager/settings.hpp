@@ -24,7 +24,8 @@ public:
         LAST_PLAYLIST_POSITION,
         LED_BRIGHTNESS,
         CORRETION_LENGTH,
-        PAUSE_INTERVAL
+        PAUSE_INTERVAL,
+        FI_GEAR2_TEETH_COUNT
     };
 
     static float_t getSetting(Settings::Digit setting);

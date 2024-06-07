@@ -43,6 +43,8 @@ public:
     void setPauseInterval(uint32_t newPauseInterval) {pauseInterval = newPauseInterval;};
     uint32_t getPauseInterval() {return pauseInterval;};
 
+    uint16_t getFiGear2TeethsCount() {return fiGear2TeethCount;};
+
     void stop();
     void pause(uint32_t time);
     void pause();
@@ -107,7 +109,7 @@ private:
 
     uint32_t pauseInterval;
 
-    uint16_t rMoveDiapason = 370;
+    uint16_t rMoveDiapason = 500;
 
     void abortPoint();
 
@@ -134,20 +136,23 @@ private:
     static constexpr uint16_t uTicks = 16;
     static constexpr uint16_t motorRoundTicks = 200;
 
-    static constexpr uint16_t rGearTeethCount = 20;
+    uint16_t rGearTeethCount = 20;
     static constexpr uint16_t rGearStep = 2;
-    static constexpr float_t rTicksCoef = (float_t)uTicks * (float_t)motorRoundTicks / (float_t)(rGearStep * rGearTeethCount);
+    float_t rTicksCoef; // = (float_t)uTicks * (float_t)motorRoundTicks / (float_t)(rGearStep * rGearTeethCount);
+    void setRGearTeethCount(uint16_t newRGearTeethCount);
 
-    static constexpr uint16_t fiGear1TeethCount = 20;
-    static constexpr uint16_t fiGear2TeethCount = 160;//202;
-    static constexpr float_t fiTicksCoef = (float_t)uTicks * (((float_t)fiGear2TeethCount/(float_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
-
-    static constexpr float_t errRonRadian = fiGear1TeethCount*rGearStep/(2*M_PI); // 40mm error in R on 2pi (360) rotation
+    uint16_t fiGear1TeethCount;// = 20;
+    uint16_t fiGear2TeethCount;// = 160;//202;
+    float_t fiTicksCoef; // = (float_t)uTicks * (((float_t)fiGear2TeethCount/(float_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
+    float_t errRonRadian; // = fiGear1TeethCount*rGearStep/(2*M_PI); // 40mm error in R on 2pi (360) rotation
                                                 // clockwise direction: -R
 
-    static constexpr float_t mmOnRTick = 1/rTicksCoef;
-    static constexpr float_t radOnFiTick = 1/fiTicksCoef;
-    static constexpr float_t errRonTick = errRonRadian/fiTicksCoef;
+    void setFiGearTeethCount(uint16_t newFiGear1TeethCount, uint16_t newFiGear2TeethCount);
+
+    float_t mmOnRTick;// = 1/rTicksCoef;
+    float_t radOnFiTick;// = 1/fiTicksCoef;
+    float_t errRonTick;// = errRonRadian/fiTicksCoef;
+    void recountValuesOnTick();
 };
 
 #endif /* USER_PRINTER_HPP_ */

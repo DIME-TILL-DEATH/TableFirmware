@@ -37,7 +37,8 @@ LedStrip::LedStrip()
 
     // set the initial compare value
     brightness = Settings::getSetting(Settings::Digit::LED_BRIGHTNESS);
-    mcpwm_comparator_set_compare_value(comparator, period * (1-brightness));
+    // mcpwm_comparator_set_compare_value(comparator, period * (1-brightness));
+    mcpwm_comparator_set_compare_value(comparator, period * (brightness));
 
     // go high on counter empty
     mcpwm_generator_set_action_on_timer_event(generator, MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY, MCPWM_GEN_ACTION_HIGH));
@@ -51,7 +52,8 @@ LedStrip::LedStrip()
 void LedStrip::setBrightness(float newBrightness)
 {
     brightness = newBrightness;
-    mcpwm_comparator_set_compare_value(comparator, period * (1-brightness));
+    // mcpwm_comparator_set_compare_value(comparator, period * (1-brightness));
+    mcpwm_comparator_set_compare_value(comparator, period * (brightness));
 }
 
 float LedStrip::getBrightness()

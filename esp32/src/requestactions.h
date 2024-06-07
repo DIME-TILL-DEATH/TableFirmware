@@ -29,7 +29,8 @@ enum class Hardware
     GET_CORRECTION,
     SET_CORRECTION,
     GET_PAUSE_INTERVAL,
-    SET_PAUSE_INTERVAL
+    SET_PAUSE_INTERVAL,
+    GET_FI_GEAR2_TEETH_COUNT
 };
 
 enum class Playlist

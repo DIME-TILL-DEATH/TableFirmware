@@ -17,12 +17,12 @@ static void IRAM_ATTR gpio_isr_handler(void* arg)
     if(gpio_num == PIN_ENDSTOP_R)
     {
       printer.trigRZero();
-      esp_rom_printf("Trigger R center\r\n");
+      //esp_rom_printf("Trigger R center\r\n");
     }
     if(gpio_num == PIN_ENDSTOP_FI)
     {
       printer.trigFiZero();
-      esp_rom_printf("Trigger Fi center\r\n");
+      //esp_rom_printf("Trigger Fi center\r\n");
     }
 }
 

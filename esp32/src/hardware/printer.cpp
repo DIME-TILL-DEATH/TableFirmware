@@ -19,6 +19,9 @@ Printer::Printer()
 
     currentPolarPosition.r = 0;
     currentPolarPosition.fi = 0;
+
+    setRGearTeethCount(20);
+    setFiGearTeethCount(20, 160);
 }
 
 void Printer::initTimers(gptimer_alarm_cb_t rTimerCb,
@@ -41,9 +44,14 @@ void Printer::loadSettings()
     correctionLength = Settings::getSetting(Settings::Digit::CORRETION_LENGTH);
     pauseInterval = Settings::getSetting(Settings::Digit::PAUSE_INTERVAL);
 
+    uint16_t settingFiGear2TeethCount = Settings::getSetting(Settings::Digit::FI_GEAR2_TEETH_COUNT);
+    setRGearTeethCount(20);
+    setFiGearTeethCount(20, settingFiGear2TeethCount);
+
     rMoveDiapason = rMoveDiapason * printScaleCoef;
 
-    ESP_LOGI(TAG, "Loading printer settings. Speed: %f, Rotation: %f, Scale: %f", speed, coordSysRotation, printScaleCoef);  
+    ESP_LOGI(TAG, "Loading printer settings. Speed: %f, Rotation: %f, Scale: %f, Correction: %f, Pause: %d, FiGear2Teeths: %d", 
+    speed, coordSysRotation, printScaleCoef, correctionLength, pauseInterval, settingFiGear2TeethCount);  
 }
 
 void Printer::findCenter()
@@ -254,14 +262,14 @@ void Printer::printRoutine()
                        
             }
 
-            // if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
-            // {
-            //     printf("===coords compare finish\r\n");
-            //     rTicksCounter = 0;
-            //     fiTicksCounter = 0;
-            //     currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-            //     setState(PrinterState::HANDLE_COMMAND);
-            // }
+            if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
+            {
+                //printf("===coords compare finish\r\n");
+                rTicksCounter = 0;
+                fiTicksCounter = 0;
+                currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
+                setState(PrinterState::HANDLE_COMMAND);
+            }
             break;
         }
 
@@ -592,4 +600,30 @@ void Printer::resume()
 bool Printer::isPrinterFree()
 {
     return m_state == PrinterState::IDLE;
+}
+
+void Printer::setRGearTeethCount(uint16_t newRGearTeethCount)
+{
+    rGearTeethCount = newRGearTeethCount;
+    rTicksCoef = (float_t)uTicks * (float_t)motorRoundTicks / (float_t)(rGearStep * rGearTeethCount);
+    recountValuesOnTick();
+}
+
+void Printer::setFiGearTeethCount(uint16_t newFiGear1TeethCount, uint16_t newFiGear2TeethCount)
+{
+    fiGear1TeethCount = newFiGear1TeethCount;
+    fiGear2TeethCount = newFiGear2TeethCount;
+
+    fiTicksCoef = (float_t)uTicks * (((float_t)fiGear2TeethCount/(float_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
+    errRonRadian = fiGear1TeethCount*rGearStep/(2*M_PI); // 40mm error in R on 2pi (360) rotation
+                                                // clockwise direction: -R
+
+    recountValuesOnTick();
+}
+
+void Printer::recountValuesOnTick()
+{
+    mmOnRTick = 1/rTicksCoef;
+    radOnFiTick = 1/fiTicksCoef;
+    errRonTick = errRonRadian/fiTicksCoef;    
 }

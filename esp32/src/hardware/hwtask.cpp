@@ -141,6 +141,12 @@ void processNetRequest(NetComm::HardwareCommand* command)
             answer->pauseInterval = printer.getPauseInterval();
             break;
         }
+
+        case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT:
+        {
+            answer->fiGear2Teeths = printer.getFiGear2TeethsCount();
+            break;
+        }
     }
 
     if(answer)

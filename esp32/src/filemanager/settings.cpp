@@ -162,6 +162,7 @@ std::string Settings::settingName(Settings::Digit settingType)
         case Settings::Digit::LED_BRIGHTNESS: return "LED_BRIGHTNESS";
         case Settings::Digit::CORRETION_LENGTH: return "CORRECTION_LENGTH";
         case Settings::Digit::PAUSE_INTERVAL: return "PAUSE_INTERVAL";
+        case Settings::Digit::FI_GEAR2_TEETH_COUNT: return "FI_GEAR2_TEETH_COUNT";
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return "";
@@ -178,6 +179,7 @@ float_t Settings::defaultSetting(Settings::Digit settingType)
         case Settings::Digit::LED_BRIGHTNESS: return 0.5;
         case Settings::Digit::CORRETION_LENGTH: return 0;
         case Settings::Digit::PAUSE_INTERVAL: return 1000;
+        case Settings::Digit::FI_GEAR2_TEETH_COUNT: return 160;
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return 0;
