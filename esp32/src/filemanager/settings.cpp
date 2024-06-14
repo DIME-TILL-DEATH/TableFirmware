@@ -18,7 +18,7 @@ float_t Settings::getSetting(Settings::Digit setting)
     FILE* file = fopen(fullFileName.c_str(), "r");
     if(file == NULL)
     {
-        ESP_LOGE(TAG, "Can't open settings file");
+        ESP_LOGE(TAG, "getSetting error. Can't open settings file. Return default value.");
         goto ENDING;
     }
 
@@ -50,7 +50,7 @@ std::string Settings::getSetting(Settings::String setting)
     FILE* file = fopen(fullFileName.c_str(), "r");
     if(file == NULL)
     {
-        ESP_LOGE(TAG, "Can't open settings file");
+        ESP_LOGE(TAG, "getSetting error. Can't open settings file. Return default value.");
         goto ENDING;
     }
 
@@ -76,10 +76,18 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
 {
     std::string originalFilePath = FileManager::mountPoint + "settings.ini";
     FILE* originalfile = fopen(originalFilePath.c_str(), "r");
+    if(originalfile == NULL)
+    {
+        ESP_LOGE(TAG, "SaveSetting error. Can't open original file");
+    }
 
     std::string tmpFilePath = FileManager::mountPoint + "replace.tmp";
     FILE* tempFile = fopen(tmpFilePath.c_str(), "w");
-
+    if(tempFile == NULL)
+    {
+        ESP_LOGE(TAG, "SaveSetting error. Can't open temp file for write");
+        return;
+    }
     char buf[512];
     bool settingFinded = false;
 
@@ -115,10 +123,18 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
 void Settings::saveSetting(Settings::String setting, std::string value)
 {
     std::string originalFilePath = FileManager::mountPoint + "settings.ini";
-    FILE* originalfile = fopen(originalFilePath.c_str(), "r");
+    FILE* originalfile = NULL;
+    do{ 
+        fopen(originalFilePath.c_str(), "r");
+    }while(originalfile == NULL);
 
     std::string tmpFilePath = FileManager::mountPoint + "replace.tmp";
     FILE* tempFile = fopen(tmpFilePath.c_str(), "w");
+    if(tempFile == NULL)
+    {
+        ESP_LOGE(TAG, "SaveSetting error. Can't open temp file for write");
+        return;
+    }
 
     char buf[512];
     bool settingFinded = false;
@@ -163,6 +179,7 @@ std::string Settings::settingName(Settings::Digit settingType)
         case Settings::Digit::CORRETION_LENGTH: return "CORRECTION_LENGTH";
         case Settings::Digit::PAUSE_INTERVAL: return "PAUSE_INTERVAL";
         case Settings::Digit::FI_GEAR2_TEETH_COUNT: return "FI_GEAR2_TEETH_COUNT";
+        case Settings::Digit::MACHINE_MINUTES: return "MACHINE_MINUTES";
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return "";
@@ -180,6 +197,7 @@ float_t Settings::defaultSetting(Settings::Digit settingType)
         case Settings::Digit::CORRETION_LENGTH: return 0;
         case Settings::Digit::PAUSE_INTERVAL: return 1000;
         case Settings::Digit::FI_GEAR2_TEETH_COUNT: return 160;
+        case Settings::Digit::MACHINE_MINUTES: return 0;
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return 0;
@@ -189,6 +207,7 @@ std::string Settings::settingName(Settings::String settingType)
 {
     switch(settingType)
     {
+        case Settings::String::SERIAL_ID: return "SERIAL_ID";
         case Settings::String::PLAYLIST: return "PLAYLIST";
         case Settings::String::WIFI_SSID: return "WIFI_SSID";
         case Settings::String::WIFI_PASSWORD: return "WIFI_PASSWORD";
@@ -201,6 +220,7 @@ std::string Settings::defaultSetting(Settings::String settingType)
 {
     switch(settingType)
     {
+        case Settings::String::SERIAL_ID: return "UNDEFINED";
         case Settings::String::PLAYLIST: return "playlist.pls";
         case Settings::String::WIFI_SSID: return "Kinetic_table";
         case Settings::String::WIFI_PASSWORD: return "1234567890";

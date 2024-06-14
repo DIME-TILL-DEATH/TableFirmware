@@ -14,10 +14,14 @@
 
 #include "filemanager/settings.hpp"
 
+
+
 static const char *TAG = "HW TASK";
 
 Printer printer;
 LedStrip* ledStrip;
+
+StatisticData_t statData;
 
 void processNetRequest(NetComm::HardwareCommand* command)
 {
@@ -26,6 +30,14 @@ void processNetRequest(NetComm::HardwareCommand* command)
 
     switch(command->action())
     {
+        case Requests::Hardware::GET_SERIAL_ID:
+        {
+            std::string* serialId_ptr = new std::string;
+            *serialId_ptr = Settings::getSetting(Settings::String::SERIAL_ID);
+            answer->dataPtr = serialId_ptr;
+            break;
+        }
+
         case Requests::Hardware::PAUSE_PRINTING:
         {
             delete answer;
@@ -147,6 +159,13 @@ void processNetRequest(NetComm::HardwareCommand* command)
             answer->fiGear2Teeths = printer.getFiGear2TeethsCount();
             break;
         }
+
+        case Requests::Hardware::GET_MACHINE_MINUTES:
+        {
+            answer->dataPtr = &(statData.machineMinutes);
+            answer->dataSize = sizeof(statData.machineMinutes);
+            break;
+        }
     }
 
     if(answer)
@@ -158,6 +177,8 @@ void processNetRequest(NetComm::HardwareCommand* command)
 bool firstCommRecv = false;
 void hardware_task(void *arg)
 {
+  xTaskCreatePinnedToCore(statistic_task, "statistic", 4096, NULL, PRIORITY_STATISTIC_TASK, NULL, 1);
+
   Printer_Init();
   ledStrip = new LedStrip();
 
@@ -165,10 +186,12 @@ void hardware_task(void *arg)
   
   for(;;)
   { 
+    portBASE_TYPE xStatus;
+    //==========================Main routine============================================
     if(printer.isPrinterFree())
     {
       GCode::GAbstractComm* recvComm;
-      portBASE_TYPE xStatus = xQueueReceive(gcodesQueue, &recvComm, pdMS_TO_TICKS(0));
+      xStatus = xQueueReceive(gcodesQueue, &recvComm, pdMS_TO_TICKS(0));
       if(xStatus == pdPASS)
       {
          printer.setNextCommand(recvComm);
@@ -181,13 +204,24 @@ void hardware_task(void *arg)
     }
     printer.printRoutine();
 
+    //===========================Statistic=============================================
+    xStatus = xQueueReceive(statisticQueue, &statData, pdMS_TO_TICKS(0));
+    if(xStatus == pdPASS)
+    {
+        //ESP_LOGI(TAG, "Machine minutes: %d", statData.machineMinutes);  
+        Settings::saveSetting(Settings::Digit::MACHINE_MINUTES, statData.machineMinutes);
+    }
+
+    //===========================Net request===========================================
     NetComm::HardwareCommand* recvAction;
-    portBASE_TYPE xStatus = xQueueReceive(printReqQueue, &recvAction, pdMS_TO_TICKS(0));
+    xStatus = xQueueReceive(printReqQueue, &recvAction, pdMS_TO_TICKS(0));
     if(xStatus == pdPASS)
     {
         processNetRequest(recvAction);
         delete(recvAction);
     }
+
+
     vTaskDelay(pdMS_TO_TICKS(1));
   }
 }

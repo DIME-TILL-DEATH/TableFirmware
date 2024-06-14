@@ -30,7 +30,10 @@ enum class Hardware
     SET_CORRECTION,
     GET_PAUSE_INTERVAL,
     SET_PAUSE_INTERVAL,
-    GET_FI_GEAR2_TEETH_COUNT
+    GET_FI_GEAR2_TEETH_COUNT,
+    //======FIXED========
+    GET_SERIAL_ID = 128,
+    GET_MACHINE_MINUTES
 };
 
 enum class Playlist

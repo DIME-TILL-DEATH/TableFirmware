@@ -35,6 +35,10 @@ public:
     
     uint16_t fiGear2Teeths;
 
+    // TODO: new syntaxis
+    void* dataPtr{NULL};
+    uint32_t dataSize{0};
+
     Requests::Hardware action() {return m_action;};
 private:
     Requests::Hardware m_action;

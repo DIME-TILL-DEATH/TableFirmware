@@ -8,11 +8,13 @@
 
 #include "filemanager/filemanager.hpp"
 
+#include "hardware/stattask.hpp"
+
 #include "esp_log.h"
 
 void hardware_task(void *arg);
 
-extern QueueHandle_t printReqQueue, netAnswQueue, gcodesQueue;
+extern QueueHandle_t printReqQueue, netAnswQueue, gcodesQueue, statisticQueue;
 extern FileManager fileManager;
 
 #endif

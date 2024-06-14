@@ -11,9 +11,10 @@ public:
 
     enum class String
     {
+        SERIAL_ID,
         WIFI_SSID,
         WIFI_PASSWORD,
-        PLAYLIST
+        PLAYLIST,
     };
 
     enum class Digit
@@ -25,7 +26,8 @@ public:
         LED_BRIGHTNESS,
         CORRETION_LENGTH,
         PAUSE_INTERVAL,
-        FI_GEAR2_TEETH_COUNT
+        FI_GEAR2_TEETH_COUNT,
+        MACHINE_MINUTES
     };
 
     static float_t getSetting(Settings::Digit setting);

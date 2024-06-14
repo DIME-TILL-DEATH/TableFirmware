@@ -1,7 +1,11 @@
 #include "hardwarecommand.hpp"
 
+#include "esp_log.h"
+
 #include <stdio.h>
 #include <string.h>
+
+#include <string>
 
 using namespace NetComm;
 
@@ -71,6 +75,19 @@ void HardwareCommand::formAnswerFrame(uint8_t* data, uint32_t* size)
 
     switch(m_action)
     {
+        case Requests::Hardware::GET_SERIAL_ID:
+        {
+            if(dataPtr == NULL) return;
+
+            std::string serialId = *(std::string*)dataPtr;
+
+            answerFrame.structData.data0 = serialId.size();
+            answerFrame.structData.frameSize += serialId.size();
+
+            memcpy(&data[sizeof(FrameHeader)], serialId.c_str(), serialId.size());
+            delete((std::string*)dataPtr);
+            break;
+        }
         case Requests::Hardware::PAUSE_PRINTING:
         {
             
@@ -165,8 +182,14 @@ void HardwareCommand::formAnswerFrame(uint8_t* data, uint32_t* size)
             answerFrame.structData.data0 = fiGear2Teeths;    
             break;
         }
+
+        case Requests::Hardware::GET_MACHINE_MINUTES:
+        {
+            answerFrame.structData.data0 = *(uint32_t*)dataPtr;
+            break;
+        }
     }
 
     memcpy(data, answerFrame.rawData, sizeof(FrameHeader)) ;
-    *size = sizeof(FrameHeader);
+    *size = answerFrame.structData.frameSize;
 }
