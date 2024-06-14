@@ -103,13 +103,23 @@ void file_task(void *arg)
             {
                 ESP_LOGI("FM TASK", "loading next print");
                 result = fileManager.loadNextPrint();
-                ESP_LOGI("FM TASK", "loaded");
+                if(result == FM_OK)
+                {
+                    ESP_LOGI("FM TASK", "loaded");
+                }
+                else
+                {
+                    ESP_LOGE("FM TASK", "Load next print failed.");
+                    // vTaskDelay(pdMS_TO_TICKS(1000));
+                    break;
+                }
             }
             while(result != FM_OK);
         } 
       }
-      else
-      {
+
+    //   else
+    //   {
         NetComm::PlaylistCommand* recvAction;
         portBASE_TYPE xStatus = xQueueReceive(fileReqQueue, &recvAction, pdMS_TO_TICKS(0));
         if(xStatus == pdPASS)
@@ -117,7 +127,7 @@ void file_task(void *arg)
             processNetRequest(recvAction);
             delete(recvAction);
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
-      }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    //   }
   }
 }

@@ -123,7 +123,7 @@ void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
     {
         fputs((*it).data(), playlistFile);
     }
-    ESP_LOGI(TAG, "New playlist wirtten");
+    ESP_LOGI(TAG, "New playlist written");
     fclose(playlistFile);
 }
 
@@ -137,9 +137,7 @@ FM_RESULT FileManager::loadNextPrint()
     curPlsPos++;
     if(curPlsPos == playlist.size()) curPlsPos = 0;
 
-    loadPrintFromPlaylist(curPlsPos);
-
-    return FM_OK;
+    return loadPrintFromPlaylist(curPlsPos);
 }
 
 FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
@@ -148,7 +146,9 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
 
     if(num > playlist.size()-1)
     {
-        ESP_LOGE(TAG, "loadPrintFromPlaylis: requested num more than playlist size, num: %d, size: %d", num, playlist.size());
+        ESP_LOGE(TAG, "loadPrintFromPlaylis: requested num more than playlist size, num: %d, size: %d. Settling pos to 0", 
+                num, playlist.size());
+        num = 0;
     }
 
     curPlsPos = num;
@@ -159,6 +159,12 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     if(playlist.size()>0)
     {
         currentFileName = playlist.at(curPlsPos);
+    }
+    else
+    {
+        ESP_LOGE(TAG,"Playlist is empty!");
+        curPlsPos = -1;
+        return FM_ERROR; 
     }
 
     std::string fullFileName;
