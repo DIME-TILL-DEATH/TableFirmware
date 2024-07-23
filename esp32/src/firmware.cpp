@@ -15,7 +15,7 @@
 
 static const char *TAG = "FIRMWARE";
 
-#define BUFFSIZE 1024
+#define BUFFSIZE 1024*2
 static char ota_write_data[BUFFSIZE + 1] = { 0 };
 
 bool FW_DoFirmwareUpdate()
@@ -56,6 +56,8 @@ bool FW_DoFirmwareUpdate()
         ESP_LOGE(TAG, "Can't open firmware file");
         return false;
     }
+
+
 
     while (1) 
     {
@@ -130,13 +132,14 @@ bool FW_DoFirmwareUpdate()
                 return false;
             }
             binary_file_length += data_read;
-            ESP_LOGD(TAG, "Written image length %d", binary_file_length);
+            ESP_LOGI(TAG, "Written image length %d", binary_file_length);
         } 
         else if (data_read == 0) 
         {
             ESP_LOGI(TAG, "Data written");
             break;
         }
+
     }
     ESP_LOGI(TAG, "Total Write binary data length: %d", binary_file_length);
 

@@ -2,34 +2,40 @@
 #define FRAMEPARSER_H
 
 #include <vector>
+#include <queue>
+
+#include "utils\qt_compat.h"
 
 #include "frames.h"
 
-#include "netcomm/abstractcommand.hpp"
-#include "netcomm/hardwarecommand.hpp"
-#include "netcomm/playlistcommand.hpp"
-#include "netcomm/filecommand.hpp"
-#include "netcomm/firmwarecommand.hpp"
+#include "messages/abstractmessage.h"
+#include "messages/intvaluemessage.h"
+#include "messages/floatvaluemessage.h"
+#include "messages/stringmessage.h"
+#include "messages/filepartmessage.h"
+#include "messages/foldercontentmessage.h"
 
 class FrameParser
 {
 public:
     FrameParser(int socket);
+    ~FrameParser();
+
     void processRecvData(uint8_t* frame, uint16_t len);
 
-    std::vector<NetComm::AbstractCommand*> parsedCommands;
+    std::queue<AbstractMessage*> parsedMessages;
 private:
     int m_socket;
 
     int32_t curFrameBytesRecv{0};
-    std::vector<uint8_t> txBuffer;
-    std::vector<uint8_t> lastRecvFrame;
+    QByteArray txBuffer;
+    QByteArray lastRecvFrame;
     FrameHeader lastRecvFrameHeader;
 
-    void parseHardwareActions();
-    void parsePlaylistActions();
-    void parseFileActions();
-    void parseFirmwareActions();
+    AbstractMessage* parseHardwareActions();
+    AbstractMessage* parsePlaylistActions();
+    AbstractMessage* parseFileActions();
+    AbstractMessage* parseFirmwareActions();
 };
 
 #endif

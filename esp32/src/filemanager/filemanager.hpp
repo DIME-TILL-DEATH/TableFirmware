@@ -8,11 +8,15 @@
 
 #include "ff.h"
 
+#include "utils/qt_compat.h"
+
 #include "geometry/coordinates.hpp"
 #include "gcode/gabstractcomm.hpp"
 #include "gcode/m51comm.hpp"
 #include "gcode/g1comm.hpp"
 #include "gcode/g4comm.hpp"
+
+#include "messages/filepartmessage.h"
 
 typedef enum
 {
@@ -35,13 +39,17 @@ public:
 
     GCode::GAbstractComm* readNextComm();
 
-    void changePlaylist(const std::vector<std::string>* newPlaylist);
+    void changePlaylist(const std::vector<std::string>& newPlaylist);
+    void changePlaylist(const std::string& newPlaylist);
     void changePlaylistPos(int16_t newPos);
 
     std::vector<std::string>* getPlaylist_ptr() {return &playlist;};
     int16_t getCurrentPosition() {return curPlsPos;};
 
     static int32_t fileWrite(std::string fileName, const char* writeType, void* data_ptr, size_t dataSize);
+
+    void appendFileRequest(QString filePath);
+    FilePartMessage* getRequestedData();
 
     constexpr static std::string mountPoint = "/sdcard/";
     constexpr static std::string playlistsDir = "playlists/";
@@ -51,6 +59,8 @@ private:
     FILE* currentPrintFile;
     int16_t curPlsPos{-1};
     std::vector<std::string> playlist;
+    std::queue<QString> requestedFiles; // TODO: split playlist and preview
+    FILE* currentProcessingFile{nullptr};
     uint16_t m_pointsNum{0};
 
     constexpr static char TAG[] = "FILE MANGER";

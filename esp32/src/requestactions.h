@@ -64,25 +64,4 @@ enum class Firmware
 
 }
 
-// namespace Data
-// {
-// enum class Hardware
-// {
-//     PROGRESS,
-//     PAUSE_STATE
-// };
-
-// enum class Playlist
-// {
-//     PLAYLIST,
-//     PLAYLIST_POSITION
-// };
-
-// enum class File
-// {
-//     REQUESTED_FILE,
-//     REQUESTED_FOLDER
-// };
-// }
-
 #endif // REQUESTACTIONS_H

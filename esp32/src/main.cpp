@@ -17,14 +17,20 @@
 #include "hardware/printsequence.hpp"
 #include "hardware/hwtask.hpp"
 #include "filemanager/filetask.hpp"
-#include "netcomm/abstractcommand.hpp"
+
+#include "messages/abstractmessage.h"
+
+#include "esp_task_wdt.h"
 
 #define PRINTER_COMM_QUEUE_SIZE 32
-#define NET_COMM_QUEUE_SIZE 32
+#define NET_COMM_QUEUE_SIZE 16
 
 QueueHandle_t gcodesQueue, printReqQueue, fileReqQueue, netAnswQueue;
 
 FileManager fileManager;
+
+TaskHandle_t fileTaskHandle;
+TaskHandle_t hwTaskhandle;
 
 extern "C" void app_main(void)
 {
@@ -34,9 +40,9 @@ extern "C" void app_main(void)
   // TCPIP_Init();
 
   gcodesQueue = xQueueCreate(PRINTER_COMM_QUEUE_SIZE, sizeof(GCode::GAbstractComm*));
-  printReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
-  fileReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
-  netAnswQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(NetComm::AbstractCommand*));
+  printReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(AbstractMessage*));
+  fileReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(AbstractMessage*));
+  netAnswQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(AbstractMessage*));
 
   while(fileManager.connectSDCard() != FM_OK)
   {
@@ -49,8 +55,10 @@ extern "C" void app_main(void)
 
   if(gcodesQueue != NULL)
   {
-    xTaskCreatePinnedToCore(file_task, "file_manager", 4096, NULL, PRIORITY_FILE_MANAGER_TASK, NULL, 1);
-    xTaskCreatePinnedToCore(hardware_task, "printer", 4096, NULL, PRIORITY_PRINTER_TASK, NULL, 1);
+    xTaskCreatePinnedToCore(file_task, "file_manager", 1024*8, NULL, PRIORITY_FILE_MANAGER_TASK, &fileTaskHandle, 1);
+    xTaskCreatePinnedToCore(hardware_task, "printer", 4096, NULL, PRIORITY_PRINTER_TASK, &hwTaskhandle, 1);
+
+    //esp_task_wdt_delete(fileTaskHandle);
   }
   else
   {

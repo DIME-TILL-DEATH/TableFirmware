@@ -17,11 +17,9 @@
 #include "tcpip.hpp"
 
 #include "frameparser.hpp"
-#include "netcomm/abstractcommand.hpp"
 
 #include "projdefines.h"
 
-#include "netanswer.hpp"
 
 #define PORT                        9000
 #define KEEPALIVE_IDLE              5
@@ -35,6 +33,8 @@
 static const char *TAG = "TCP/IP";
 
 TaskHandle_t answerTaskHandle;
+
+int currentSocket = 0;
 
 static void socket_recv_task(const int sock)
 {
@@ -53,37 +53,37 @@ static void socket_recv_task(const int sock)
             ESP_LOGW(TAG, "Connection closed");
         } 
         else 
-        {    
-            //ESP_LOGI(TAG, "Recieved frame");        
+        {            
             frameParser->processRecvData(rx_buffer, len);           
-                        
-            while(frameParser->parsedCommands.size()>0)
+
+            while(frameParser->parsedMessages.size()>0)
             {
-                NetComm::AbstractCommand* recvComm = frameParser->parsedCommands.front();
-                frameParser->parsedCommands.erase(frameParser->parsedCommands.begin());
-                switch(recvComm->commandType())
+                AbstractMessage* message = frameParser->parsedMessages.front();
+                frameParser->parsedMessages.pop();
+
+                switch(message->frameType())
                 {
-                    case NetComm::HARDWARE_COMMAND: 
+                    case FrameType::HARDWARE_ACTIONS: 
                     {
-                        xQueueSendToBack(printReqQueue, &recvComm, pdMS_TO_TICKS(1000)); 
+                        xQueueSendToBack(printReqQueue, &message, pdMS_TO_TICKS(1000)); 
                         break;
                     }
-                    case NetComm::PLAYLIST_COMMAND: 
+                    case FrameType::PLAYLIST_ACTIONS: 
                     {
-                        xQueueSendToBack(fileReqQueue, &recvComm, pdMS_TO_TICKS(1000)); 
+                        xQueueSendToBack(fileReqQueue, &message, pdMS_TO_TICKS(1000)); 
                         break;
                     }
-                    case NetComm::FILE_COMMAND:
+                    case FrameType::FILE_ACTIONS:
                     {
-                        xQueueSendToBack(netAnswQueue, &recvComm, pdMS_TO_TICKS(10000));
+                        xQueueSendToBack(fileReqQueue, &message, pdMS_TO_TICKS(10000));
                         break;
                     }
-                    case NetComm::FIRMWARE_COMMAND:
+                    case FrameType::FIRMWARE_ACTIONS:
                     {
-                        xQueueSendToBack(netAnswQueue, &recvComm, pdMS_TO_TICKS(10000));
+                        xQueueSendToBack(fileReqQueue, &message, pdMS_TO_TICKS(10000));
                         break;
                     }
-                    default: ESP_LOGE(TAG, "Unknown command type"); break;
+                    default: break;
                 }
             }
         }
@@ -91,25 +91,45 @@ static void socket_recv_task(const int sock)
 
 // TODO handle WI-FI disconnect. Close socket and delete tasks
     delete(frameParser);
+    currentSocket = 0;
     shutdown(sock, 0);
     close(sock);
-    ESP_LOGI(TAG, "Frame parser deleted, socket closed");
+    ESP_LOGI(TAG, "Socket closed");
 }
 
 static void answer_task(void *pvParameters)
 {
-    NetComm::AbstractCommand* recvComm;
-    int socket = *((int*)pvParameters);
+    // NetComm::AbstractCommand* recvComm;
+    AbstractMessage* answerMsg;
+   // int socket = *((int*)pvParameters);
 
     for(;;)
     {
-        portBASE_TYPE xStatus = xQueueReceive(netAnswQueue, &recvComm, pdMS_TO_TICKS(10));
+        portBASE_TYPE xStatus = xQueueReceive(netAnswQueue, &answerMsg, portMAX_DELAY);// pdMS_TO_TICKS(10));
         if(xStatus == pdPASS)
         {
 
-            processAnswer(recvComm, socket);
-            if(recvComm) delete recvComm;         
+            if(currentSocket > 0)
+            {
+                if(answerMsg)
+                {
+                    int written = send(currentSocket, answerMsg->rawData().data(), answerMsg->rawData().size(), 0);
+            
+                    if (written < 0) 
+                    {
+                        ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+                    }
+                }
+            } 
+
+
+            if(answerMsg) 
+            {
+                delete answerMsg; 
+            }
+              
         }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -184,9 +204,10 @@ static void tcp_task(void *pvParameters)
         }
         ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
 
-        xTaskCreatePinnedToCore(answer_task, "tcp_answer", 8192, (void*)&sock, PRIORITY_TCP_ANSWER_TASK, &answerTaskHandle, 0);
+        currentSocket = sock;
+        // xTaskCreatePinnedToCore(answer_task, "tcp_answer", 8192*2, (void*)&sock, PRIORITY_TCP_ANSWER_TASK, &answerTaskHandle, 0);
         socket_recv_task(sock);     
-        vTaskDelete(answerTaskHandle);
+       // vTaskDelete(answerTaskHandle);
     }
 
 CLEAN_UP:
@@ -196,5 +217,8 @@ CLEAN_UP:
 
 void TCPIP_Init(void)
 {
-    xTaskCreatePinnedToCore(tcp_task, "tcp_server", 8192, NULL, PRIORITY_TCP_RECIEVE_TASK, NULL, 0);
+    xTaskCreatePinnedToCore(tcp_task, "tcp_server", 1024*8, NULL, PRIORITY_TCP_RECIEVE_TASK, NULL, 1);
+
+    // answer task is only send to socket. Only one.
+    xTaskCreatePinnedToCore(answer_task, "tcp_answer", 1024*4, (void*)&currentSocket, PRIORITY_TCP_ANSWER_TASK, &answerTaskHandle, 1);
 }

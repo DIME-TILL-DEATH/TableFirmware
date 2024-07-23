@@ -47,8 +47,11 @@ public:
 
     void stop();
     void pause(uint32_t time);
-    void pause();
-    void resume();
+    void pauseResume();
+
+    void abortPoint();
+    void pauseThread();
+    void resumeThread();
 
     uint16_t currentPrintPointNum() {return pointNum;}
 
@@ -111,11 +114,6 @@ private:
 
     uint16_t rMoveDiapason = 500;
 
-    void abortPoint();
-
-    void pauseThread();
-    void resumeThread();
-
     void setTIMPeriods(float_t rStepTime, float_t fiStepTime);
 
     uint32_t radiansToMotorTicks(double_t radians);
@@ -128,8 +126,8 @@ private:
     static constexpr uint16_t printerQueueSize = 32;
 
     static constexpr uint32_t timerPrescaler = 1000000; // 1us
-    static constexpr uint16_t minRPeriod = 100;
-    static constexpr uint16_t minFiPeriod = 250;
+    static constexpr uint16_t minRPeriod = 250;
+    static constexpr uint16_t minFiPeriod = 350;
 
     static constexpr float_t stepSize = 1;
 

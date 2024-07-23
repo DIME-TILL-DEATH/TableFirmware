@@ -85,28 +85,37 @@ FM_RESULT FileManager::loadPlaylist(std::string playlistName, uint32_t playlstPo
     char buf[256];
     while(fgets(buf, 256, playlistFile))
     {
-        playlist.push_back(std::string(buf));
+        std::string resultFileName = std::string(buf);
+        if(resultFileName == "\r\n") continue; // empty string
+        playlist.push_back(resultFileName);
     }
     fclose(playlistFile);
 
+    if(curPlsPos > playlist.size()-1) curPlsPos = -1;
     curPlsPos = playlstPosition-1; // first command "loadNextPrint"
 
     // Only Info
-    /*
+    
     printf("Playlist:\r\n");
     for(uint16_t i=0; i<playlist.size();i++)
     {
-        printf("%s\r\n", playlist.at(i).c_str());
+        printf("%s", playlist.at(i).c_str());
     }
     printf("--------\r\n");
-    */
-
+    
     return FM_OK;
 }
 
-void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
+void FileManager::changePlaylist(const std::vector<std::string>& newPlaylist)
 {
-    playlist = *newPlaylist;
+    playlist = newPlaylist;
+
+    printf("New playlist:\r\n");
+    for(uint16_t i=0; i<playlist.size();i++)
+    {
+        printf("%s", playlist.at(i).c_str());
+    }
+    printf("--------\r\n");
     
     std::string fullFileName;
     fullFileName = mountPoint + playlistsDir + "playlist.pls";
@@ -121,21 +130,52 @@ void FileManager::changePlaylist(const std::vector<std::string>* newPlaylist)
 
     for(auto it=playlist.begin(); it!=playlist.end(); it++)
     {
+        if(*it == "\r\n") continue; // empty string
         fputs((*it).data(), playlistFile);
     }
     ESP_LOGI(TAG, "New playlist written");
     fclose(playlistFile);
 }
 
+void FileManager::changePlaylist(const std::string& newPlaylist)
+{
+    char* str_ptr = (char*)&newPlaylist[0];
+    char* foundName;
+
+    std::vector<std::string> newVectorPlaylist;
+
+    while((foundName = strsep(&str_ptr, "\r\n")) != NULL)
+    {  
+        std::string fileName(foundName);
+
+        if(fileName.size() == 0) continue; //empty string
+        
+        if(fileName.find(0xFF) == std::string::npos)
+        {
+            newVectorPlaylist.push_back(fileName + "\r\n");
+        }
+    }
+
+    changePlaylist(newVectorPlaylist);
+}
+
 void FileManager::changePlaylistPos(int16_t newPos)
 {
-    if(newPos > -1) curPlsPos = newPos;
+    if(newPos < 0)
+    {
+        ESP_LOGE(TAG, "New position < 0");    
+        return;
+    }  
+
+    if(newPos > playlist.size()) newPos = 0;
+
+    curPlsPos = newPos;
 }
 
 FM_RESULT FileManager::loadNextPrint()
 {
     curPlsPos++;
-    if(curPlsPos == playlist.size()) curPlsPos = 0;
+    if(curPlsPos == playlist.size()-1) curPlsPos = 0;
 
     return loadPrintFromPlaylist(curPlsPos);
 }
@@ -143,6 +183,8 @@ FM_RESULT FileManager::loadNextPrint()
 FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
 {
     fclose(currentPrintFile);
+
+    ESP_LOGI(TAG, "Loading next print. Pos in pls: %d", num);
 
     if(num > playlist.size()-1)
     {
@@ -270,8 +312,61 @@ int32_t FileManager::fileWrite(std::string fileName, const char* writeType, void
     }
     else
     {
-        ESP_LOGE("FileManager::fileWrite", "Error opening file to append %s", fileName.c_str());
+        ESP_LOGE("FileManager::fileWrite", "Error opening file to create/append: %s, acton type: %s", fileName.c_str(), writeType);
         fclose(file);
         return -1;
     }
+}
+
+void FileManager::appendFileRequest(QString filePath)
+{
+    requestedFiles.push(filePath);
+}
+
+FilePartMessage* FileManager::getRequestedData()
+{
+    if(requestedFiles.size() == 0) return nullptr;
+
+    QString currentRequestFilePath = requestedFiles.front(); 
+
+    if(!currentProcessingFile)
+    {      
+        currentProcessingFile = fopen(currentRequestFilePath.c_str(), "r");
+        ESP_LOGI(TAG, "File  %s opened.", currentRequestFilePath.c_str());
+    }
+
+    long filePos = 0;
+    
+    if(currentProcessingFile)
+    {
+        while(esp_get_free_heap_size() < 1024*64) 
+        {
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+        
+        QByteArray filePart;
+        filePart.resize(FilePartMessage::defaultPartSize);
+        filePos = ftell(currentProcessingFile);
+        size_t bytesReaded = fread(filePart.data(), 1, FilePartMessage::defaultPartSize, currentProcessingFile);
+
+        if(bytesReaded>0)
+        {
+            return new FilePartMessage(FilePartMessage::ActionType::GET_FILE, currentRequestFilePath, currentRequestFilePath, filePart, filePos);               
+        }
+        else
+        {
+            ESP_LOGI(TAG, "File sended, closing", currentRequestFilePath.c_str(), filePos);
+            fclose(currentProcessingFile);
+            currentProcessingFile = nullptr;
+            requestedFiles.pop();
+            return nullptr;
+        }
+    }
+    else
+    {
+        requestedFiles.pop();
+        ESP_LOGE(TAG, "File request. Can't open file %s", currentRequestFilePath.c_str());
+        return new FilePartMessage(FilePartMessage::ActionType::GET_FILE, currentRequestFilePath, currentRequestFilePath, QByteArray(), -1);
+    }
+
 }

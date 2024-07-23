@@ -8,12 +8,16 @@
 #include "printer.hpp"
 #include "ledstrip.hpp"
 #include "printsequence.hpp"
-#include "filemanager/filemanager.hpp"
-#include "netcomm/abstractcommand.hpp"
-#include "netcomm/hardwarecommand.hpp"
 
+#include "filemanager/filemanager.hpp"
 #include "filemanager/settings.hpp"
 
+#include "utils/qt_compat.h"
+
+#include "messages/abstractmessage.h"
+#include "messages/intvaluemessage.h"
+#include "messages/floatvaluemessage.h"
+#include "messages/stringmessage.h"
 
 
 static const char *TAG = "HW TASK";
@@ -23,52 +27,52 @@ LedStrip* ledStrip;
 
 StatisticData_t statData;
 
-void processNetRequest(NetComm::HardwareCommand* command)
+void processMessage(AbstractMessage* msg)
 {
-    NetComm::HardwareCommand* answer = new NetComm::HardwareCommand(*command);
-    answer->direction = NetComm::ANSWER;
+    if(msg->frameType() != FrameType::HARDWARE_ACTIONS)
+    {
+        ESP_LOGE(TAG, "Not HARDWARE_ACTION message in hwTask");
+        return;
+    }
 
-    switch(command->action())
+    AbstractMessage* answerMessage = nullptr;
+
+    switch(static_cast<Requests::Hardware>(msg->action()))
     {
         case Requests::Hardware::GET_SERIAL_ID:
         {
-            std::string* serialId_ptr = new std::string;
-            *serialId_ptr = Settings::getSetting(Settings::String::SERIAL_ID);
-            answer->dataPtr = serialId_ptr;
+            answerMessage = new StringMessage(FrameType::HARDWARE_ACTIONS, msg->action(),  Settings::getSetting(Settings::String::SERIAL_ID));
             break;
         }
 
         case Requests::Hardware::PAUSE_PRINTING:
         {
-            delete answer;
-            answer = nullptr;
-
             ESP_LOGI(TAG, "Request pause print");
-            printer.pause();
+            printer.pauseResume();
             break;
         }
 
         case Requests::Hardware::REQUEST_PROGRESS:
         {
-            answer->progress.currentPoint = printer.currentPrintPointNum();
-            answer->progress.printPoints = fileManager.pointsNum();
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.currentPrintPointNum(), fileManager.pointsNum());
             break;
         }
 
         case Requests::Hardware::SET_PRINT_SPEED:
         {
-            float_t newPrintSpeed = command->printSpeed;
+            FloatValueMessage* floatMsg = static_cast<FloatValueMessage*>(msg);
+            float_t newPrintSpeed = floatMsg->value();
             printer.setSpeed(newPrintSpeed);
-            answer->printSpeed = newPrintSpeed;
-            ESP_LOGI(TAG, "Settled speed: %f", newPrintSpeed);
 
+            ESP_LOGI(TAG, "Settled speed: %f", newPrintSpeed);
             Settings::saveSetting(Settings::Digit::PRINT_SPEED, newPrintSpeed);
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), newPrintSpeed);
             break;         
         }
 
         case Requests::Hardware::GET_PRINT_SPEED:
         {
-            answer->printSpeed = printer.getSpeed();
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getSpeed());
             break;
         }
 
@@ -76,11 +80,13 @@ void processNetRequest(NetComm::HardwareCommand* command)
         {
             if(ledStrip)
             {
-                float_t newBrightness = command->ledBrightness;
+                FloatValueMessage* floatMsg = static_cast<FloatValueMessage*>(msg);
+                float_t newBrightness = floatMsg->value();;
                 ledStrip->setBrightness(newBrightness);
-                answer->ledBrightness= newBrightness;
+
                 ESP_LOGI(TAG, "Settled brightness: %f", newBrightness);
-                Settings::saveSetting(Settings::Digit::LED_BRIGHTNESS, newBrightness);           
+                Settings::saveSetting(Settings::Digit::LED_BRIGHTNESS, newBrightness);  
+                answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), newBrightness);         
             }
             break;  
         }
@@ -89,88 +95,98 @@ void processNetRequest(NetComm::HardwareCommand* command)
         {
             if(ledStrip)
             {
-                answer->ledBrightness = ledStrip->getBrightness();
+                answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), ledStrip->getBrightness());
             }
             break;
         }
 
         case Requests::Hardware::SET_SCALE_COEFFICIENT:
         {
-            float_t newScaleCoefficient = command->scaleCoefficient;
-            answer->scaleCoefficient = newScaleCoefficient;
+            FloatValueMessage* floatMsg = static_cast<FloatValueMessage*>(msg);
+            float_t newScaleCoefficient = floatMsg->value();
+
             ESP_LOGI(TAG, "Settled scale coefficient: %f", newScaleCoefficient);
-            Settings::saveSetting(Settings::Digit::SCALE_COEF, newScaleCoefficient);           
+            Settings::saveSetting(Settings::Digit::SCALE_COEF, newScaleCoefficient);
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), newScaleCoefficient);           
             break;  
         }
 
         case Requests::Hardware::GET_SCALE_COEFFICIENT:
         {
-            answer->scaleCoefficient = Settings::getSetting(Settings::Digit::SCALE_COEF);
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), Settings::getSetting(Settings::Digit::SCALE_COEF));
             break;
         }
 
         case Requests::Hardware::SET_ROTATION:
         {
-            float_t newRotation = command->rotation;
-            answer->rotation = newRotation;
+            FloatValueMessage* floatMsg = static_cast<FloatValueMessage*>(msg);
+            float_t newRotation = floatMsg->value();
+
             ESP_LOGI(TAG, "Settled rotation: %f", newRotation);
-            Settings::saveSetting(Settings::Digit::PRINT_ROTATION, newRotation);           
+            Settings::saveSetting(Settings::Digit::PRINT_ROTATION, newRotation);  
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), newRotation);         
             break;  
         }
 
         case Requests::Hardware::GET_ROTATION:
         {
-            answer->rotation = Settings::getSetting(Settings::Digit::PRINT_ROTATION);
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), Settings::getSetting(Settings::Digit::PRINT_ROTATION));
             break;
         }
 
         case Requests::Hardware::SET_CORRECTION:
         {
-            float_t newCorrection = command->correction;
-            answer->scaleCoefficient = newCorrection;
+            FloatValueMessage* floatMsg = static_cast<FloatValueMessage*>(msg);
+            float_t newCorrection = floatMsg->value();;
+
             ESP_LOGI(TAG, "Settled correction: %f", newCorrection);
-            Settings::saveSetting(Settings::Digit::CORRETION_LENGTH, newCorrection);           
+            Settings::saveSetting(Settings::Digit::CORRETION_LENGTH, newCorrection);  
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), newCorrection);         
             break;  
         }
 
         case Requests::Hardware::GET_CORRECTION:
         {
-            answer->correction = Settings::getSetting(Settings::Digit::CORRETION_LENGTH);
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), Settings::getSetting(Settings::Digit::CORRETION_LENGTH));
             break;
         }
 
         case Requests::Hardware::SET_PAUSE_INTERVAL:
         {
-            uint32_t newPauseInterval = command->pauseInterval;
+            IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
+            uint32_t newPauseInterval = intMsg->value();
+
             ESP_LOGI(TAG, "Settled pause interval: %d", newPauseInterval);
             printer.setPauseInterval(newPauseInterval);
-            Settings::saveSetting(Settings::Digit::PAUSE_INTERVAL, newPauseInterval);       
+            Settings::saveSetting(Settings::Digit::PAUSE_INTERVAL, newPauseInterval);      
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getPauseInterval()); 
             break;
         }
 
         case Requests::Hardware::GET_PAUSE_INTERVAL:
         {
-            answer->pauseInterval = printer.getPauseInterval();
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getPauseInterval());
             break;
         }
 
         case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT:
         {
-            answer->fiGear2Teeths = printer.getFiGear2TeethsCount();
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getFiGear2TeethsCount());
             break;
         }
 
         case Requests::Hardware::GET_MACHINE_MINUTES:
         {
-            answer->dataPtr = &(statData.machineMinutes);
-            answer->dataSize = sizeof(statData.machineMinutes);
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), statData.machineMinutes);
             break;
         }
+
+        default: ESP_LOGE(TAG, "Unknown hardware action"); break;
     }
 
-    if(answer)
+    if(answerMessage)
     {
-        xQueueSendToBack(netAnswQueue, &answer, pdMS_TO_TICKS(100));
+        xQueueSendToBack(netAnswQueue, &answerMessage, pdMS_TO_TICKS(100));
     }
 }
 
@@ -199,7 +215,7 @@ void hardware_task(void *arg)
       }
       else
       {
-         if(firstCommRecv) ESP_LOGE("PRINTER TASK", "queue empty");
+         //if(firstCommRecv) ESP_LOGE("PRINTER TASK", "queue empty");
       }
     }
     printer.printRoutine();
@@ -213,14 +229,13 @@ void hardware_task(void *arg)
     }
 
     //===========================Net request===========================================
-    NetComm::HardwareCommand* recvAction;
-    xStatus = xQueueReceive(printReqQueue, &recvAction, pdMS_TO_TICKS(0));
+    AbstractMessage* recvMsg;
+    xStatus = xQueueReceive(printReqQueue, &recvMsg, pdMS_TO_TICKS(0));
     if(xStatus == pdPASS)
     {
-        processNetRequest(recvAction);
-        delete(recvAction);
+        processMessage(recvMsg);
+        delete(recvMsg);
     }
-
 
     vTaskDelay(pdMS_TO_TICKS(1));
   }

@@ -104,6 +104,9 @@ void WIFI_Init(void)
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
+    esp_wifi_config_80211_tx_rate(WIFI_IF_AP, WIFI_PHY_RATE_MAX);
+    esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT40);
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());

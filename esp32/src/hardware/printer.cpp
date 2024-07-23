@@ -423,9 +423,11 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
         }
     }
 
-   printerPins->rDirState(static_cast<Pins::PinState>(rDirection));
+    printerPins->rDirState(static_cast<Pins::PinState>(rDirection));
 
     fiTicksCounter = radiansToMotorTicks(abs(dFi));
+    //if(abs(dFi) > M_PI_2) printf("Long dFi move, dFi: %lf, fi ticks: %d\r\n", dFi, fiTicksCounter);
+
 
     float_t rPeriod = stepTimeInSec/rTicksCounter;
     float_t fiPeriod = stepTimeInSec/fiTicksCounter;
@@ -467,7 +469,7 @@ void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
         fiCorretionCoef = (float_t)minRPeriod / (float_t)timerRPeriod;
         timerRPeriod = minRPeriod;
         timerFiPeriod *=  fiCorretionCoef;
-        //printf("Fi correction, coef: %lf\r\n", fiCorretionCoef);
+        //printf("R min timer!(fi timer: %d, r timer: %d), Fi corretion coef: %lf\r\n", timerFiPeriod, timerRPeriod, fiCorretionCoef);
     }
 
     if(timerFiPeriod < minFiPeriod)
@@ -476,7 +478,7 @@ void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
         rCorretionCoef = (float_t)minFiPeriod / (float_t)timerFiPeriod;
         timerFiPeriod = minFiPeriod;
         timerRPeriod *=  rCorretionCoef;
-        //printf("R correction, coef: %lf\r\n", rCorretionCoef);
+        //printf("Fi min timer!(fi timer: %d, r timer: %d), R correction, coef: %lf\r\n", timerFiPeriod, timerRPeriod, rCorretionCoef);
     }
 
     rTimer->setInterval(timerRPeriod);
@@ -584,17 +586,17 @@ void Printer::pause(uint32_t time)
     pauseCounter = time;
 }
 
-void Printer::pause()
-{
-    pause(infinitePause);
-}
-
-void Printer::resume()
+void Printer::pauseResume()
 {
     if(m_state == PrinterState::PAUSE)
     {
         returnToPreviousState();
     }
+    else
+    {
+        pause(infinitePause);
+    }
+    
 }
 
 bool Printer::isPrinterFree()

@@ -15,9 +15,15 @@ static const char *TAG = "FRAME PARSER";
 FrameParser::FrameParser(int socket)
 {
     m_socket = socket;
+
     lastRecvFrameHeader.frameType = UNDEFINED;
     lastRecvFrameHeader.frameSize = 0;
     ESP_LOGI(TAG, "new frame parser created, parent socket: %d\r\n", m_socket);
+}
+
+FrameParser::~FrameParser()
+{
+    ESP_LOGI(TAG, "Frame parser deleted, parent socket: %d", m_socket);
 }
 
 void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
@@ -41,33 +47,37 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
             lastRecvFrame.resize(lastRecvFrameHeader.frameSize);
             std::copy(txBuffer.begin(), txBuffer.begin() + lastRecvFrameHeader.frameSize, lastRecvFrame.begin());
 
+            AbstractMessage* message = nullptr;            
+
             switch(lastRecvFrameHeader.frameType)
             {
                 case PLAYLIST_ACTIONS:
                 {
-                    parsePlaylistActions();
+                    message = parsePlaylistActions();
                     break;
                 }
 
                 case HARDWARE_ACTIONS:
                 {
-                    parseHardwareActions();
+                    message = parseHardwareActions();
                     break;
                 }
 
                 case FILE_ACTIONS:
                 {
-                    parseFileActions();
+                    message = parseFileActions();
                     break;
                 }
 
                 case FIRMWARE_ACTIONS:
                 {
-                    parseFirmwareActions();
+                    message = parseFirmwareActions();
                     break;
                 }
                 default: ESP_LOGE(TAG, "Unknown frame type");
             }
+
+            if(message) parsedMessages.push(message);
 
             txBuffer.erase(txBuffer.begin(), txBuffer.begin()+lastRecvFrameHeader.frameSize);
             lastRecvFrameHeader.frameSize = 0;
@@ -79,176 +89,82 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
     }
 }
 
-void FrameParser::parseHardwareActions()
+AbstractMessage* FrameParser::parseHardwareActions()
 {
-    NetComm::HardwareCommand* command = new NetComm::HardwareCommand(0, lastRecvFrameHeader);
-    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-    parsedCommands.push_back(command);
+    switch((Requests::Hardware)lastRecvFrameHeader.action)
+    {
+        case Requests::Hardware::GET_SERIAL_ID: return new StringMessage(lastRecvFrame);
+        case Requests::Hardware::REQUEST_PROGRESS: return new IntValueMessage(lastRecvFrame);
+        case Requests::Hardware::SET_PRINT_SPEED:
+        case Requests::Hardware::GET_PRINT_SPEED: return new FloatValueMessage(lastRecvFrame);
+        case Requests::Hardware::SET_LED_BRIGHTNESS:
+        case Requests::Hardware::GET_LED_BRIGHTNESS: return new FloatValueMessage(lastRecvFrame);
+        case Requests::Hardware::SET_SCALE_COEFFICIENT:
+        case Requests::Hardware::GET_SCALE_COEFFICIENT: return new FloatValueMessage(lastRecvFrame);
+        case Requests::Hardware::SET_ROTATION: 
+        case Requests::Hardware::GET_ROTATION: return new FloatValueMessage(lastRecvFrame);
+        case Requests::Hardware::SET_CORRECTION: 
+        case Requests::Hardware::GET_CORRECTION: return new FloatValueMessage(lastRecvFrame);
+        case Requests::Hardware::SET_PAUSE_INTERVAL: 
+        case Requests::Hardware::GET_PAUSE_INTERVAL: return new IntValueMessage(lastRecvFrame);
+        case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
+        case Requests::Hardware::GET_MACHINE_MINUTES: return new IntValueMessage(lastRecvFrame);
+            default: break;
+    }
+    return nullptr;
 }
 
-#define PLAYLIST_RX_BUFFER 512
-void FrameParser::parsePlaylistActions()
+AbstractMessage* FrameParser::parsePlaylistActions()
 {
-    NetComm::PlaylistCommand* command = new NetComm::PlaylistCommand(0, (Requests::Playlist)lastRecvFrameHeader.action);
-
-    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
     switch((Requests::Playlist)lastRecvFrameHeader.action)
     {
-        case Requests::Playlist::REQUEST_PLAYLIST:
-        {
-            //ESP_LOGI(TAG, "Playlist request formed");
-            break;
-        }
-
-        case Requests::Playlist::REQUEST_PLAYLIST_POSITION:
-        {
-            //ESP_LOGI(TAG, "Playlist request position formed");
-            break;    
-        }
-
-        case Requests::Playlist::CHANGE_PLAYLIST:
-        {
-            char buffer[PLAYLIST_RX_BUFFER*2];
-            memset(buffer, 0XFF, PLAYLIST_RX_BUFFER*2);
-
-            std::vector<std::string>* newPlaylist = new std::vector<std::string>;
-            int charRemainded=0;
-            while(lastRecvFrame.size()>0)
-            {
-                int partSize;
-                if(lastRecvFrame.size()%PLAYLIST_RX_BUFFER == 0)
-                {
-                    partSize = PLAYLIST_RX_BUFFER;
-                }
-                else
-                {
-                    partSize = lastRecvFrame.size()%PLAYLIST_RX_BUFFER;
-                }
-
-                memcpy(&buffer[charRemainded], lastRecvFrame.data(), partSize);
-                lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+partSize);
-
-                char* str_ptr = &buffer[0];
-                char* foundName;
-                size_t charsCopied = 0;
-
-                int delimitersCount = 0;
-                while((foundName = strsep(&str_ptr, "|")) != NULL)
-                {  
-                    std::string fileName(foundName);
-                    
-                    if(fileName.find(0xFF) == std::string::npos)
-                    {
-                        newPlaylist->push_back(fileName + "\r\n");
-                        charsCopied += strlen(foundName);
-                        delimitersCount++;
-                    }
-
-                }
-                charRemainded = charRemainded + partSize - charsCopied - delimitersCount;
-
-                memcpy(&buffer[0], &buffer[charsCopied+delimitersCount], charRemainded);
-                memset(&buffer[charRemainded], 0XFF, PLAYLIST_RX_BUFFER*2-charRemainded);
-            }
-
-            command->playlist_ptr = newPlaylist;
-            break;
-        }
-
-        case Requests::Playlist::CHANGE_PLAYLIST_POSITION:
-        {
-            // Same actions
-        }
-
-        case Requests::Playlist::CHANGE_PRINTNG_FILE:
-        {
-            command->curPlsPos = lastRecvFrameHeader.data0;
-            break;
-        }
+        case Requests::Playlist::REQUEST_PLAYLIST: return new IntValueMessage(lastRecvFrame);
+        case Requests::Playlist::REQUEST_PLAYLIST_POSITION: return new IntValueMessage(lastRecvFrame);
+        case Requests::Playlist::CHANGE_PLAYLIST: return new StringMessage(lastRecvFrame);
+        case Requests::Playlist::CHANGE_PLAYLIST_POSITION: return new IntValueMessage(lastRecvFrame);
+        case Requests::Playlist::CHANGE_PRINTNG_FILE: return new IntValueMessage(lastRecvFrame);
     }
-    if(command) parsedCommands.push_back(command);
+
+    return nullptr;
 }
 
-void FrameParser::parseFileActions()
+AbstractMessage* FrameParser::parseFileActions()
 {
-    char buffer[512];
-    memset(buffer, 0, 512);
-
-    NetComm::FileCommand* command = new NetComm::FileCommand(0, (Requests::File)lastRecvFrameHeader.action);
-
-    uint16_t pathStringSize = lastRecvFrameHeader.frameParameters;
-    int32_t partSize = lastRecvFrameHeader.data0;
-
-    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-    memcpy(buffer, lastRecvFrame.data(), pathStringSize);
-
-    std::string fullFileName = std::string(buffer);
-    command->path = fullFileName;
-
-    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin() + pathStringSize);
-
     switch((Requests::File)lastRecvFrameHeader.action)
     {
-        case Requests::File::FILE_CREATE:
+        case Requests::File::FILE_CREATE: 
+        case Requests::File::FILE_APPEND_DATA: 
         {
-            command->dataProcessed = FileManager::fileWrite(fullFileName, "w", lastRecvFrame.data(), partSize);
-            break;
+            while(esp_get_free_heap_size() < 1024*64) 
+            {
+                vTaskDelay(pdMS_TO_TICKS(50));
+            }
+            return new FilePartMessage(lastRecvFrame);
         }
-
-        case Requests::File::FILE_APPEND_DATA:
-        {
-            command->dataProcessed = FileManager::fileWrite(fullFileName, "a", lastRecvFrame.data(), partSize);
-            break;
-        }
-        default: {}
+        
+        case Requests::File::GET_FILE: return new StringMessage(lastRecvFrame);
+        case Requests::File::GET_FOLDER_CONTENT: return new StringMessage(lastRecvFrame);
     }
 
-    if(command) parsedCommands.push_back(command);
+    return nullptr;
 }
 
-void FrameParser::parseFirmwareActions()
+AbstractMessage* FrameParser::parseFirmwareActions()
 {
-    NetComm::FirmwareCommand* command = new NetComm::FirmwareCommand(0, (Requests::Firmware)lastRecvFrameHeader.action);
-    command->fileSize = lastRecvFrameHeader.data1;
-    lastRecvFrame.erase(lastRecvFrame.begin(), lastRecvFrame.begin()+sizeof(FrameHeader));
-    std::string fullFileName = FileManager::mountPoint + "firmware.bin";
-
-    int32_t partSize = lastRecvFrameHeader.data0;
-
     switch((Requests::Firmware)lastRecvFrameHeader.action)
     {
-    case Requests::Firmware::FIRMWARE_VERSION:
+    case Requests::Firmware::FIRMWARE_VERSION: return new StringMessage(lastRecvFrame);
+    case Requests::Firmware::FIRMWARE_UPLOAD_START: 
+    case Requests::Firmware::FIRMWARE_UPLOAD_PROCEED: 
     {
-        const esp_app_desc_t* appDesc = esp_app_get_description();
-        command->firmwareVersion = appDesc->version;
-        break;
+        while(esp_get_free_heap_size() < 1024*64) 
+        {
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+        return new FilePartMessage(lastRecvFrame);
     }
-
-    case Requests::Firmware::FIRMWARE_UPLOAD_START:
-    {   
-        command->dataProcessed = FileManager::fileWrite(fullFileName, "wb", lastRecvFrame.data(), partSize);
-        break;
+    case Requests::Firmware::FIRMWARE_UPDATE: return new IntValueMessage(lastRecvFrame);
+    case Requests::Firmware::ESP_RESTART: return new IntValueMessage(lastRecvFrame);
     }
-
-    case Requests::Firmware::FIRMWARE_UPLOAD_PROCEED:
-    {
-        command->dataProcessed = FileManager::fileWrite(fullFileName, "ab", lastRecvFrame.data(), partSize);
-        break;
-    }
-
-    case Requests::Firmware::FIRMWARE_UPDATE:
-    {
-        // run update on the answer side, but form stop printer command here
-        NetComm::HardwareCommand* stopPrintCommand = new NetComm::HardwareCommand(0, Requests::Hardware::PAUSE_PRINTING);
-        parsedCommands.push_back(stopPrintCommand);
-        break;
-    }
-
-    case Requests::Firmware::ESP_RESTART:
-    {
-        FW_RestartEsp();
-        break;
-    }
-    }
-    if(command) parsedCommands.push_back(command);
+    return nullptr;
 }
