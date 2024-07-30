@@ -125,7 +125,13 @@ void Settings::saveSetting(Settings::String setting, std::string value)
     std::string originalFilePath = FileManager::mountPoint + "settings.ini";
     FILE* originalfile = NULL;
     do{ 
-        fopen(originalFilePath.c_str(), "r");
+        originalfile = fopen(originalFilePath.c_str(), "r");
+
+        if(originalfile == NULL)
+        {
+            vTaskDelay(pdMS_TO_TICKS(100));
+            ESP_LOGE(TAG, "SaveSetting error. Can't open original file for read");
+        }
     }while(originalfile == NULL);
 
     std::string tmpFilePath = FileManager::mountPoint + "replace.tmp";
@@ -146,6 +152,7 @@ void Settings::saveSetting(Settings::String setting, std::string value)
         {
             std::string resultSettingString = settingName(setting) + "=" + value;
             fputs(resultSettingString.c_str(), tempFile);
+            fputs("\n", tempFile);
             settingFinded = true;
         }
         else
@@ -158,8 +165,9 @@ void Settings::saveSetting(Settings::String setting, std::string value)
     {
         std::string resultSettingString = settingName(setting) + "=" + value;
         fputs(resultSettingString.c_str(), tempFile);
+        fputs("\n", tempFile);
     }
-
+    
     fclose(originalfile);
     fclose(tempFile);
 
@@ -209,6 +217,7 @@ std::string Settings::settingName(Settings::String settingType)
     {
         case Settings::String::SERIAL_ID: return "SERIAL_ID";
         case Settings::String::PLAYLIST: return "PLAYLIST";
+        case Settings::String::PRINT_GALLERY: return "PRINT_GALLERY";
         case Settings::String::WIFI_SSID: return "WIFI_SSID";
         case Settings::String::WIFI_PASSWORD: return "WIFI_PASSWORD";
     }
@@ -222,6 +231,7 @@ std::string Settings::defaultSetting(Settings::String settingType)
     {
         case Settings::String::SERIAL_ID: return "UNDEFINED";
         case Settings::String::PLAYLIST: return "playlist.pls";
+        case Settings::String::PRINT_GALLERY: return "";
         case Settings::String::WIFI_SSID: return "Kinetic_table";
         case Settings::String::WIFI_PASSWORD: return "1234567890";
     }

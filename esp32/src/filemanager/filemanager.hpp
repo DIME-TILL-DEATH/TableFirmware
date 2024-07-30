@@ -30,7 +30,9 @@ public:
     FileManager();
 
     FM_RESULT connectSDCard();
-    FM_RESULT loadPlaylist(std::string playlistName, uint32_t playlstPosition);
+
+    FM_RESULT loadGallery(std::string galleryName, uint32_t playlstPosition);
+    FM_RESULT loadPlaylist(uint32_t playlstPosition);
     FM_RESULT loadNextPrint();
     FM_RESULT loadPrintFromPlaylist(uint16_t num);
 
@@ -46,6 +48,8 @@ public:
     std::vector<std::string>* getPlaylist_ptr() {return &playlist;};
     int16_t getCurrentPosition() {return curPlsPos;};
 
+    QString currentGalleryName() {return currentGallery;};
+
     static int32_t fileWrite(std::string fileName, const char* writeType, void* data_ptr, size_t dataSize);
 
     void appendFileRequest(QString filePath);
@@ -58,7 +62,11 @@ private:
     
     FILE* currentPrintFile;
     int16_t curPlsPos{-1};
+
+    std::string currentGallery;
+    std::string currentPlaylistPath = mountPoint + playlistsDir;
     std::vector<std::string> playlist;
+
     std::queue<QString> requestedFiles; // TODO: split playlist and preview
     FILE* currentProcessingFile{nullptr};
     uint16_t m_pointsNum{0};

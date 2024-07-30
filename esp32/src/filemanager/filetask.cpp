@@ -92,8 +92,31 @@ AbstractMessage* playlistActions(AbstractMessage* msg)
 
             ESP_LOGI("FILE TASK", "Request to change printng file, pos: %d", newFilePosition);
             xQueueReset(gcodesQueue);
+            printer.stop();
             fileManager.loadPrintFromPlaylist(newFilePosition);
+
             return new IntValueMessage(FrameType::PLAYLIST_ACTIONS, msg->action(), fileManager.getCurrentPosition());
+        }
+
+        case Requests::Playlist::GET_CURRENT_GALLERY:
+        {
+            return new StringMessage(FrameType::PLAYLIST_ACTIONS, (uint8_t)Requests::Playlist::GET_CURRENT_GALLERY, fileManager.currentGalleryName());
+        }
+
+        case Requests::Playlist::SET_CURRENT_GALLERY:
+        {
+            StringMessage* stringMsg = static_cast<StringMessage*>(msg);
+            QString galleryName = stringMsg->string();
+
+            Settings::saveSetting(Settings::String::PRINT_GALLERY, galleryName);
+
+            ESP_LOGI("FILE TASK", "Request to set new gallery: %s", galleryName.c_str());
+            fileManager.loadGallery(galleryName, 0);
+            xQueueReset(gcodesQueue);
+            printer.stop();
+            fileManager.loadNextPrint();
+
+            return new StringMessage(FrameType::PLAYLIST_ACTIONS, (uint8_t)Requests::Playlist::GET_CURRENT_GALLERY, fileManager.currentGalleryName());
         }
     }
     return nullptr;
@@ -250,11 +273,19 @@ void file_task(void *arg)
 {
   FM_RESULT result;
 
-  std::string playlistName = Settings::getSetting(Settings::String::PLAYLIST);
   uint32_t playlstPosition = Settings::getSetting(Settings::Digit::LAST_PLAYLIST_POSITION);
-
-  fileManager.loadPlaylist(playlistName, playlstPosition);
-  ESP_LOGI("FM TASK", "Loading playlist %s in position %d", playlistName.c_str(), fileManager.getCurrentPosition()+1);
+  std::string galleryName = Settings::getSetting(Settings::String::PRINT_GALLERY);
+  
+  if(galleryName != "")
+  {
+    fileManager.loadGallery(galleryName, playlstPosition);
+    ESP_LOGI("FM TASK", "Loading gallery %s in position %d", galleryName.c_str(), fileManager.getCurrentPosition()+1);
+  }
+  else
+  {
+    fileManager.loadPlaylist(playlstPosition);
+    ESP_LOGI("FM TASK", "Loading default playlist in position %d", fileManager.getCurrentPosition()+1);
+  }
 
   FilePartMessage* filePartMsg = nullptr;
   for(;;)
@@ -279,6 +310,7 @@ void file_task(void *arg)
                 else
                 {
                     ESP_LOGE("FM TASK", "Load next print failed.");
+                    vTaskDelay(pdMS_TO_TICKS(2000));
                     break;
                 }
             }

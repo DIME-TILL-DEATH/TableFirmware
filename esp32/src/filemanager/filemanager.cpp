@@ -67,16 +67,22 @@ FM_RESULT FileManager::connectSDCard()
     return FM_OK;
 }
 
-FM_RESULT FileManager::loadPlaylist(std::string playlistName, uint32_t playlstPosition)
+FM_RESULT FileManager::loadGallery(std::string galleryName, uint32_t playlstPosition)
 {
-    std::string fullFileName;
-    fullFileName = mountPoint + playlistsDir + playlistName;
+    currentGallery = galleryName;
+    currentPlaylistPath = FileManager::mountPoint + FileManager::libraryDir + currentGallery + "/";
+    return loadPlaylist(playlstPosition);
+}
+
+FM_RESULT FileManager::loadPlaylist(uint32_t playlstPosition)
+{
+    std::string fullFileName = currentPlaylistPath + "playlist.pls";
 
     FILE* playlistFile = fopen(fullFileName.c_str(), "r");
 
     if(playlistFile == NULL)
     {
-        ESP_LOGE(TAG, "Open playlist failed, res = %d");
+        ESP_LOGE(TAG, "Open playlist failed, path: %s",  fullFileName.c_str());
         return FM_ERROR;
     }
 
@@ -118,7 +124,7 @@ void FileManager::changePlaylist(const std::vector<std::string>& newPlaylist)
     printf("--------\r\n");
     
     std::string fullFileName;
-    fullFileName = mountPoint + playlistsDir + "playlist.pls";
+    fullFileName = currentPlaylistPath + "playlist.pls";
 
     FILE* playlistFile = fopen(fullFileName.c_str(), "w");
 
@@ -210,11 +216,11 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     }
 
     std::string fullFileName;
-    fullFileName = mountPoint + libraryDir + currentFileName;
+    fullFileName = mountPoint + libraryDir + currentGallery + "/" + currentFileName;
     currentPrintFile = fopen(fullFileName.c_str(), "r");
     if(currentPrintFile == NULL)
     {
-        ESP_LOGE(TAG, "Can't open print file %s", currentFileName.c_str());
+        ESP_LOGE(TAG, "Can't open print file %s", fullFileName.c_str());
         return FM_ERROR;
     }
 
@@ -229,7 +235,7 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     } while (result);
     fseek(currentPrintFile, 0, SEEK_SET);
     
-    ESP_LOGI(TAG, "File %s succesfully opened. Point num: %d Printing...", currentFileName.c_str(), m_pointsNum);
+    ESP_LOGI(TAG, "File %s succesfully opened. Point count: %d Printing...", currentFileName.c_str(), m_pointsNum);
     return FM_OK;
 }
 
@@ -331,14 +337,14 @@ FilePartMessage* FileManager::getRequestedData()
 
     if(!currentProcessingFile)
     {      
-        currentProcessingFile = fopen(currentRequestFilePath.c_str(), "r");
-        ESP_LOGI(TAG, "File  %s opened.", currentRequestFilePath.c_str());
+        currentProcessingFile = fopen(currentRequestFilePath.c_str(), "r");      
     }
 
     long filePos = 0;
     
     if(currentProcessingFile)
     {
+        ESP_LOGI(TAG, "File  %s opened.", currentRequestFilePath.c_str());
         while(esp_get_free_heap_size() < 1024*64) 
         {
             vTaskDelay(pdMS_TO_TICKS(100));
@@ -351,6 +357,7 @@ FilePartMessage* FileManager::getRequestedData()
 
         if(bytesReaded>0)
         {
+            filePart.resize(bytesReaded);
             return new FilePartMessage(FilePartMessage::ActionType::GET_FILE, currentRequestFilePath, currentRequestFilePath, filePart, filePos);               
         }
         else

@@ -123,6 +123,8 @@ AbstractMessage* FrameParser::parsePlaylistActions()
         case Requests::Playlist::CHANGE_PLAYLIST: return new StringMessage(lastRecvFrame);
         case Requests::Playlist::CHANGE_PLAYLIST_POSITION: return new IntValueMessage(lastRecvFrame);
         case Requests::Playlist::CHANGE_PRINTNG_FILE: return new IntValueMessage(lastRecvFrame);
+        case Requests::Playlist::GET_CURRENT_GALLERY: return new IntValueMessage(lastRecvFrame);
+        case Requests::Playlist::SET_CURRENT_GALLERY: return new StringMessage(lastRecvFrame);
     }
 
     return nullptr;

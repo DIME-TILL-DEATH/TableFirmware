@@ -1,5 +1,6 @@
 #include "filepartmessage.h"
 
+
 FilePartMessage::FilePartMessage(ActionType actionType, const QString& dstPath, const QString& srcPath, const QByteArray& filePart, int32_t partPosition)
     : AbstractMessage(FrameType::UNDEFINED, (uint8_t)Requests::File::FILE_CREATE),
     m_filePart(filePart),
@@ -18,6 +19,7 @@ FilePartMessage::FilePartMessage(ActionType actionType, const QString& dstPath, 
             fileSize = ftell(reqFile);
             fclose(reqFile);
         }
+       
 
         // QFile file(srcPath);
         // fileSize = file.size();
