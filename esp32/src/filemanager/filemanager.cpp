@@ -337,14 +337,15 @@ FilePartMessage* FileManager::getRequestedData()
 
     if(!currentProcessingFile)
     {      
-        currentProcessingFile = fopen(currentRequestFilePath.c_str(), "r");      
+        currentProcessingFile = fopen(currentRequestFilePath.c_str(), "r");   
+
+        if(currentProcessingFile) ESP_LOGI(TAG, "File  %s opened.", currentRequestFilePath.c_str());  // for the first time only 
     }
 
     long filePos = 0;
     
     if(currentProcessingFile)
-    {
-        ESP_LOGI(TAG, "File  %s opened.", currentRequestFilePath.c_str());
+    {     
         while(esp_get_free_heap_size() < 1024*64) 
         {
             vTaskDelay(pdMS_TO_TICKS(100));
