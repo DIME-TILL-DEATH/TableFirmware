@@ -54,12 +54,20 @@ static void socket_recv_task(const int sock)
         } 
         else 
         {            
+            while(esp_get_free_heap_size() < 1024*64)
+            {
+                ESP_LOGD(TAG, "Free heap is too small, %d", esp_get_free_heap_size());
+                vTaskDelay(pdMS_TO_TICKS(100));
+            } 
+
             frameParser->processRecvData(rx_buffer, len);           
 
             while(frameParser->parsedMessages.size()>0)
             {
                 AbstractMessage* message = frameParser->parsedMessages.front();
                 frameParser->parsedMessages.pop();
+
+                //if()
 
                 switch(message->frameType())
                 {
@@ -119,6 +127,10 @@ static void answer_task(void *pvParameters)
                     {
                         ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                     }
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "Answer msg pointer is null!");
                 }
             } 
 

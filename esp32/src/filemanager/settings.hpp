@@ -6,6 +6,9 @@
 #include <stdint.h>
 #include <string>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 class Settings{
 public:
 
@@ -44,6 +47,10 @@ private:
     static std::string defaultSetting(Settings::String setting);
 
     constexpr static char TAG[] = "SETTINGS";
+
+    SemaphoreHandle_t m_spiMutex;
 };
+
+extern SemaphoreHandle_t spiMutex;
 
 #endif

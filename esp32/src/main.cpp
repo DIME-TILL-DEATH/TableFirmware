@@ -26,6 +26,7 @@
 #define NET_COMM_QUEUE_SIZE 16
 
 QueueHandle_t gcodesQueue, printReqQueue, fileReqQueue, netAnswQueue;
+SemaphoreHandle_t spiMutex;
 
 FileManager fileManager;
 
@@ -44,6 +45,8 @@ extern "C" void app_main(void)
   fileReqQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(AbstractMessage*));
   netAnswQueue = xQueueCreate(NET_COMM_QUEUE_SIZE, sizeof(AbstractMessage*));
 
+  spiMutex = xSemaphoreCreateMutex();
+
   while(fileManager.connectSDCard() != FM_OK)
   {
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -57,8 +60,6 @@ extern "C" void app_main(void)
   {
     xTaskCreatePinnedToCore(file_task, "file_manager", 1024*8, NULL, PRIORITY_FILE_MANAGER_TASK, &fileTaskHandle, 1);
     xTaskCreatePinnedToCore(hardware_task, "printer", 4096, NULL, PRIORITY_PRINTER_TASK, &hwTaskhandle, 1);
-
-    //esp_task_wdt_delete(fileTaskHandle);
   }
   else
   {

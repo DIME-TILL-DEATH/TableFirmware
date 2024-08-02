@@ -22,6 +22,12 @@ float_t Settings::getSetting(Settings::Digit setting)
         goto ENDING;
     }
 
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex taken by file manager, wait(get setting, digit)");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     while(fgets(buf, 512, file))
     {
         int result = sscanf(buf, settingRequest.c_str(), &settingValue);
@@ -31,9 +37,11 @@ float_t Settings::getSetting(Settings::Digit setting)
             goto ENDING;
         }
     }
+    
     printf("Setting '%s' not found. Return default value\r\n", settingRequest.c_str());
     
     ENDING:
+    xSemaphoreGive(spiMutex);
     fclose(file);
     return settingValue;
 }
@@ -54,6 +62,12 @@ std::string Settings::getSetting(Settings::String setting)
         goto ENDING;
     }
 
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex taken by file manager, wait(getSetting, string)");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     while(fgets(buf, 512, file))
     {
         char readResult[512];
@@ -65,9 +79,11 @@ std::string Settings::getSetting(Settings::String setting)
             goto ENDING;
         }
     }
+    
     printf("Setting '%s' not found. Return default value\r\n", settingRequest.c_str());
     
     ENDING:
+    xSemaphoreGive(spiMutex);
     fclose(file);
     return settingValue;
 }
@@ -91,6 +107,12 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
     char buf[512];
     bool settingFinded = false;
 
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex taken by file manager, wait(saveSetting, digit)");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     while(fgets(buf, 512, originalfile))
     {
         std::string readResult(buf);
@@ -105,13 +127,15 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
             fputs(buf, tempFile);
         }
     }
-
+    
     if(!settingFinded)
     {
         std::string resultSettingString = settingName(setting) + "=" + std::to_string(value) + "\n";
         fputs(resultSettingString.c_str(), tempFile);
         settingFinded=true;
     }
+
+    xSemaphoreGive(spiMutex);
 
     fclose(originalfile);
     fclose(tempFile);
@@ -145,6 +169,12 @@ void Settings::saveSetting(Settings::String setting, std::string value)
     char buf[512];
     bool settingFinded = false;
 
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex taken by file manager, wait(saveSetting, string)");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     while(fgets(buf, 512, originalfile))
     {
         std::string readResult(buf);
@@ -167,6 +197,9 @@ void Settings::saveSetting(Settings::String setting, std::string value)
         fputs(resultSettingString.c_str(), tempFile);
         fputs("\n", tempFile);
     }
+
+    xSemaphoreGive(spiMutex);
+    
     
     fclose(originalfile);
     fclose(tempFile);

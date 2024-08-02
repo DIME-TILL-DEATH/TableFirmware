@@ -18,6 +18,9 @@
 
 #include "messages/filepartmessage.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 typedef enum
 {
     FM_OK = 0,
@@ -73,5 +76,7 @@ private:
 
     constexpr static char TAG[] = "FILE MANGER";
 };
+
+extern SemaphoreHandle_t spiMutex;
 
 #endif /* USER_FILEMANAGER_HPP */

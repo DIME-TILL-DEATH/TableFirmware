@@ -236,6 +236,18 @@ AbstractMessage* firmwareActions(AbstractMessage* msg)
 
 void processFileMessage(AbstractMessage* msg)
 {
+    while(esp_get_free_heap_size() < 1024*32)
+    {
+        ESP_LOGW(TAG, "Free heap is too small, %d", esp_get_free_heap_size());
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }  
+
+    if(!msg)
+    {
+        ESP_LOGE(TAG, "Null message ptr");
+        return;    
+    }
+
     AbstractMessage* answerMessage = nullptr;
 
     switch(msg->frameType())
@@ -323,7 +335,7 @@ void file_task(void *arg)
     if(xStatus == pdPASS)
     {
         processFileMessage(recvMsg);
-        delete(recvMsg);
+        if(recvMsg) delete(recvMsg);
     }
 
     

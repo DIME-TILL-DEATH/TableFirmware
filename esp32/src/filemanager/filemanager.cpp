@@ -89,12 +89,21 @@ FM_RESULT FileManager::loadPlaylist(uint32_t playlstPosition)
     playlist.clear();
 
     char buf[256];
+
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex take by hardware task, wait");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     while(fgets(buf, 256, playlistFile))
     {
         std::string resultFileName = std::string(buf);
         if(resultFileName == "\r\n") continue; // empty string
         playlist.push_back(resultFileName);
     }
+
+    xSemaphoreGive(spiMutex);
     fclose(playlistFile);
 
     if(curPlsPos > playlist.size()-1) curPlsPos = -1;
@@ -130,8 +139,14 @@ void FileManager::changePlaylist(const std::vector<std::string>& newPlaylist)
 
     if(playlistFile == NULL)
     {
-        ESP_LOGE(TAG, "Open playlist failed, res = %d");
+        ESP_LOGW(TAG, "Open playlist failed, res = %d");
         return;
+    }
+
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex take by hardware task, wait");
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     for(auto it=playlist.begin(); it!=playlist.end(); it++)
@@ -139,6 +154,7 @@ void FileManager::changePlaylist(const std::vector<std::string>& newPlaylist)
         if(*it == "\r\n") continue; // empty string
         fputs((*it).data(), playlistFile);
     }
+    xSemaphoreGive(spiMutex);
     ESP_LOGI(TAG, "New playlist written");
     fclose(playlistFile);
 }
@@ -227,6 +243,13 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
     char* result;
     char readBuf[512];
     m_pointsNum = 0;
+
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex take by hardware task, wait");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
     do
     {
         result = fgets(readBuf, 512, currentPrintFile);
@@ -234,6 +257,8 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
          
     } while (result);
     fseek(currentPrintFile, 0, SEEK_SET);
+
+    xSemaphoreGive(spiMutex);
     
     ESP_LOGI(TAG, "File %s succesfully opened. Point count: %d Printing...", currentFileName.c_str(), m_pointsNum);
     return FM_OK;
@@ -249,10 +274,17 @@ GCode::GAbstractComm* FileManager::readNextComm()
         return nullptr;
     }
 
+    while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "SPI mutex take by hardware task, wait");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    GCode::GAbstractComm* answer = nullptr;
+
     result = fgets(readBuf, 256, currentPrintFile);
     if(result)
-    {
-        GCode::GAbstractComm* answer = nullptr;
+    {       
         vector<string> strArgs;
 
         char* line_ptr = &readBuf[0];
@@ -296,9 +328,10 @@ GCode::GAbstractComm* FileManager::readNextComm()
                 answer = command;
             }
         }
-        return answer;
     }
-    else return nullptr;
+
+    xSemaphoreGive(spiMutex);
+    return answer;
 }
 
 int32_t FileManager::fileWrite(std::string fileName, const char* writeType, void* data_ptr, size_t dataSize)
@@ -306,10 +339,17 @@ int32_t FileManager::fileWrite(std::string fileName, const char* writeType, void
     FILE* file = fopen(fileName.c_str(), writeType);
     if(file != NULL)
     {
+        while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+        {
+            ESP_LOGW(TAG, "SPI mutex take by hardware task, wait");
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
         // size_t bytesWritten = fwrite(data_ptr, sizeof(uint8_t), dataSize, file);
         fwrite(data_ptr, sizeof(uint8_t), dataSize, file);
 
         long fileSize = ftell(file);
+
+        xSemaphoreGive(spiMutex);
 
         ESP_LOGI("FileManager::fileWrite", "Part of file %s written, file size %d:", fileName.c_str(), fileSize);
         fclose(file);
@@ -350,11 +390,19 @@ FilePartMessage* FileManager::getRequestedData()
         {
             vTaskDelay(pdMS_TO_TICKS(100));
         }
+
+        while(xSemaphoreTake(spiMutex, pdMS_TO_TICKS(100)) != pdTRUE)
+        {
+            ESP_LOGW(TAG, "SPI mutex take by hardware task, wait");
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
         
         QByteArray filePart;
         filePart.resize(FilePartMessage::defaultPartSize);
         filePos = ftell(currentProcessingFile);
         size_t bytesReaded = fread(filePart.data(), 1, FilePartMessage::defaultPartSize, currentProcessingFile);
+
+        xSemaphoreGive(spiMutex);
 
         if(bytesReaded>0)
         {

@@ -47,7 +47,7 @@ void FrameParser::processRecvData(uint8_t* frame, uint16_t len)
             lastRecvFrame.resize(lastRecvFrameHeader.frameSize);
             std::copy(txBuffer.begin(), txBuffer.begin() + lastRecvFrameHeader.frameSize, lastRecvFrame.begin());
 
-            AbstractMessage* message = nullptr;            
+            AbstractMessage* message = nullptr;    
 
             switch(lastRecvFrameHeader.frameType)
             {
