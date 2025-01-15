@@ -186,6 +186,33 @@ AbstractMessage* fileActions(AbstractMessage* msg)
             return new FilePartMessage(FilePartMessage::ActionType::APPEND_TEXT, fileMsg->dstPath(), fileMsg->dstPath(), 
                                         QByteArray(), fileMsg->partPosition() + fileMsg->filePart().size());
         }
+
+        case Requests::File::GET_FILE_INFO:
+        {
+            break;
+        }
+
+        case Requests::File::FOLDER_CREATE:
+        {
+            StringMessage* stringMsg = static_cast<StringMessage*>(msg);
+            int res = FileManager::createDirectory(stringMsg->string());
+            if(res == 0)
+            {
+                ESP_LOGI("FILE TASK", "Folder %s created", stringMsg->string().c_str());
+            }
+            else
+            {
+                ESP_LOGE("FILE TASK", "Cannot create folder. Error code: %d", res);
+            }
+            break;
+        }
+
+        case Requests::File::FOLDER_DELETE:
+        {
+            StringMessage* stringMsg = static_cast<StringMessage*>(msg);
+            FileManager::deleteDirectory(stringMsg->string());
+            break;
+        }
     }
     return nullptr;
 }

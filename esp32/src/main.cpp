@@ -20,6 +20,8 @@
 
 #include "messages/abstractmessage.h"
 
+#include "leds/ledstask.hpp"
+
 #include "esp_task_wdt.h"
 
 #define PRINTER_COMM_QUEUE_SIZE 32

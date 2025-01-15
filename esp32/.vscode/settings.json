@@ -83,7 +83,10 @@
         "socket": "cpp",
         "timer": "cpp",
         "semaphore": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "led_strip_rmt_encoder.h": "c",
+        "rmt_tx.h": "c",
+        "led_strip_interface.h": "c"
     },
     "idf.adapterTargetName": "esp32"
 }

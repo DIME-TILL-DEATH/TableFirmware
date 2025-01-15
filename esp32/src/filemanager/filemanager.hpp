@@ -54,6 +54,8 @@ public:
     QString currentGalleryName() {return currentGallery;};
 
     static int32_t fileWrite(std::string fileName, const char* writeType, void* data_ptr, size_t dataSize);
+    static int createDirectory(std::string folderPath);
+    static bool deleteDirectory(std::string folderPath);
 
     void appendFileRequest(QString filePath);
     FilePartMessage* getRequestedData();

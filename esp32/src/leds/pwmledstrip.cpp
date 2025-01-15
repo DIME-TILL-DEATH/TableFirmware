@@ -1,13 +1,9 @@
-#include "ledstrip.hpp"
+#include "pwmledstrip.hpp"
 
 #include "filemanager/settings.hpp"
 
-#include "esp_log.h"
-
-LedStrip::LedStrip()
+PwmLedStrip::PwmLedStrip()
 {
-    ESP_LOGI(TAG, "Init LED control");
-
     // mcpwm_timer_handle_t timer = NULL;
     mcpwm_timer_config_t timer_config;
     timer_config.group_id = 0;
@@ -49,14 +45,9 @@ LedStrip::LedStrip()
     mcpwm_timer_start_stop(timer, MCPWM_TIMER_START_NO_STOP);
 }
 
-void LedStrip::setBrightness(float newBrightness)
+void PwmLedStrip::setBrightness(float newBrightness)
 {
     brightness = newBrightness;
     // mcpwm_comparator_set_compare_value(comparator, period * (1-brightness));
     mcpwm_comparator_set_compare_value(comparator, period * (brightness));
-}
-
-float LedStrip::getBrightness()
-{
-    return brightness;
 }

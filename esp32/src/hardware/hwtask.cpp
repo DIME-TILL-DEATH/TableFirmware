@@ -6,7 +6,6 @@
 #include "requestactions.h"
 #include "projdefines.h"
 #include "printer.hpp"
-#include "ledstrip.hpp"
 #include "printsequence.hpp"
 
 #include "filemanager/filemanager.hpp"
@@ -19,11 +18,16 @@
 #include "messages/floatvaluemessage.h"
 #include "messages/stringmessage.h"
 
+#include "leds/ledstask.hpp"
+#include "leds/abstractledstrip.hpp"
+#include "leds/pwmledstrip.hpp"
+
 
 static const char *TAG = "HW TASK";
 
 Printer printer;
-LedStrip* ledStrip;
+
+AbstractLedStrip* ledStrip;
 
 StatisticData_t statData;
 
@@ -208,7 +212,9 @@ void hardware_task(void *arg)
   xTaskCreatePinnedToCore(statistic_task, "statistic", 4096, NULL, PRIORITY_STATISTIC_TASK, NULL, 1);
 
   Printer_Init();
-  ledStrip = new LedStrip();
+  //ledStrip = new PwmLedStrip();
+
+  xTaskCreatePinnedToCore(leds_task, "leds", 2048, NULL, PRIORITY_LED_TASK, NULL, 0);
 
   printer.findCenter();
   
@@ -249,6 +255,6 @@ void hardware_task(void *arg)
         if(recvMsg) delete(recvMsg);
     }
 
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }

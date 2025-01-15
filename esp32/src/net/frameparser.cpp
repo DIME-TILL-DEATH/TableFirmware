@@ -93,6 +93,7 @@ AbstractMessage* FrameParser::parseHardwareActions()
 {
     switch((Requests::Hardware)lastRecvFrameHeader.action)
     {
+        case Requests::Hardware::PAUSE_PRINTING: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::GET_SERIAL_ID: return new StringMessage(lastRecvFrame);
         case Requests::Hardware::REQUEST_PROGRESS: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::SET_PRINT_SPEED:
@@ -109,7 +110,7 @@ AbstractMessage* FrameParser::parseHardwareActions()
         case Requests::Hardware::GET_PAUSE_INTERVAL: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::GET_MACHINE_MINUTES: return new IntValueMessage(lastRecvFrame);
-            default: break;
+            //default: break;
     }
     return nullptr;
 }
@@ -146,6 +147,9 @@ AbstractMessage* FrameParser::parseFileActions()
         
         case Requests::File::GET_FILE: return new StringMessage(lastRecvFrame);
         case Requests::File::GET_FOLDER_CONTENT: return new StringMessage(lastRecvFrame);
+        case Requests::File::GET_FILE_INFO: return new StringMessage(lastRecvFrame);
+        case Requests::File::FOLDER_CREATE: return new StringMessage(lastRecvFrame);
+        case Requests::File::FOLDER_DELETE: return new StringMessage(lastRecvFrame);
     }
 
     return nullptr;
