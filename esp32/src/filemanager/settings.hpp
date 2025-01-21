@@ -18,7 +18,8 @@ public:
         WIFI_SSID,
         WIFI_PASSWORD,
         PLAYLIST,
-        PRINT_GALLERY
+        PRINT_GALLERY,
+        LED_TYPE
     };
 
     enum class Digit

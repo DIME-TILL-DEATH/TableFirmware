@@ -253,6 +253,7 @@ std::string Settings::settingName(Settings::String settingType)
         case Settings::String::PRINT_GALLERY: return "PRINT_GALLERY";
         case Settings::String::WIFI_SSID: return "WIFI_SSID";
         case Settings::String::WIFI_PASSWORD: return "WIFI_PASSWORD";
+        case Settings::String::LED_TYPE: return "LED_TYPE";
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return "";
@@ -267,6 +268,7 @@ std::string Settings::defaultSetting(Settings::String settingType)
         case Settings::String::PRINT_GALLERY: return "";
         case Settings::String::WIFI_SSID: return "Kinetic_table";
         case Settings::String::WIFI_PASSWORD: return "1234567890";
+        case Settings::String::LED_TYPE: return "PWM";
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return "";

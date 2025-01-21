@@ -43,6 +43,7 @@ public:
     void setPauseInterval(uint32_t newPauseInterval) {pauseInterval = newPauseInterval;};
     uint32_t getPauseInterval() {return pauseInterval;};
 
+    void setFiGearTeethCount(uint16_t newFiGear1TeethCount, uint16_t newFiGear2TeethCount);
     uint16_t getFiGear2TeethsCount() {return fiGear2TeethCount;};
 
     void stop();
@@ -144,8 +145,6 @@ private:
     float_t fiTicksCoef; // = (float_t)uTicks * (((float_t)fiGear2TeethCount/(float_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
     float_t errRonRadian; // = fiGear1TeethCount*rGearStep/(2*M_PI); // 40mm error in R on 2pi (360) rotation
                                                 // clockwise direction: -R
-
-    void setFiGearTeethCount(uint16_t newFiGear1TeethCount, uint16_t newFiGear2TeethCount);
 
     float_t mmOnRTick;// = 1/rTicksCoef;
     float_t radOnFiTick;// = 1/fiTicksCoef;

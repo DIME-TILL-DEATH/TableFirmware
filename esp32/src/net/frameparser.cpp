@@ -109,6 +109,7 @@ AbstractMessage* FrameParser::parseHardwareActions()
         case Requests::Hardware::SET_PAUSE_INTERVAL: 
         case Requests::Hardware::GET_PAUSE_INTERVAL: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
+        case Requests::Hardware::SET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::GET_MACHINE_MINUTES: return new IntValueMessage(lastRecvFrame);
             //default: break;
     }

@@ -150,7 +150,7 @@ void Printer::printRoutine()
                         GCode::G4Comm* g4Comm = static_cast<GCode::G4Comm*>(nextComm);
                         if(g4Comm)
                         {
-                            printf("End of file.\r\n");
+                            printf("End of file, pause inteval: %d.\r\n", pauseInterval);
                             pause(pauseInterval); //g4Comm->pause()
                         }
                         break;
@@ -187,10 +187,10 @@ void Printer::printRoutine()
             stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2)));// / speed;
 
             // INFO block==========
-            //    printf("Point num: %d\r\n", pointNum);
+               printf("Point num: %d\r\n", pointNum);
 
 
-            //    printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
+               printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
             //    printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
             //    printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), 
             //    targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
@@ -205,6 +205,8 @@ void Printer::printRoutine()
 
         case PrinterState::SET_STEP:
         {
+            gpio_set_level(GPIO_NUM_23, 1);
+
             double_t minErrX = (stepX == 0) ? stepSize : fabs(stepX);
             double_t minErrY = (stepY == 0) ? stepSize : fabs(stepY);
 
@@ -250,18 +252,14 @@ void Printer::printRoutine()
                 }
 
                 setState(PrinterState::PRINTING);
+
+                gpio_set_level(GPIO_NUM_23, 0);
             }
             break;
         }
 
         case PrinterState::PRINTING:
         {
-            if(rTicksCounter==0 && fiTicksCounter==0)
-            {
-                setState(PrinterState::SET_STEP);   
-                       
-            }
-
             if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
             {
                 //printf("===coords compare finish\r\n");
@@ -269,6 +267,13 @@ void Printer::printRoutine()
                 fiTicksCounter = 0;
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
                 setState(PrinterState::HANDLE_COMMAND);
+                break;
+            }
+
+            if(rTicksCounter==0 && fiTicksCounter==0)
+            {
+                setState(PrinterState::SET_STEP);   
+                printRoutine();  // kill pause  
             }
             break;
         }
