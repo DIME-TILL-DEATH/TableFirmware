@@ -198,7 +198,7 @@ void FileManager::changePlaylistPos(int16_t newPos)
 FM_RESULT FileManager::loadNextPrint()
 {
     curPlsPos++;
-    if(curPlsPos == playlist.size()-1) curPlsPos = 0;
+    if(curPlsPos >= playlist.size()) curPlsPos = 0;
 
     return loadPrintFromPlaylist(curPlsPos);
 }
@@ -285,7 +285,7 @@ GCode::GAbstractComm* FileManager::readNextComm()
 
     do{
         result = fgets(readBuf, 256, currentPrintFile);
-    
+
         if(result)
         {       
             vector<string> strArgs;
@@ -331,9 +331,14 @@ GCode::GAbstractComm* FileManager::readNextComm()
                     answer = command;
                 }
             }
-        }
-    }while(!answer || feof(currentPrintFile));
 
+            
+        }
+
+        if(feof(currentPrintFile)) break;
+        
+    }while(!answer);
+    
     xSemaphoreGive(spiMutex);
     return answer;
 }
