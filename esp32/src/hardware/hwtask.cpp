@@ -250,7 +250,8 @@ void hardware_task(void *arg)
   { 
     portBASE_TYPE xStatus;
     //==========================Main routine============================================
-    if(printer.isPrinterFree())
+    printer.printRoutine();
+    while(printer.isPrinterFree())
     {
       GCode::GAbstractComm* recvComm;
       xStatus = xQueueReceive(gcodesQueue, &recvComm, pdMS_TO_TICKS(0));
@@ -258,14 +259,15 @@ void hardware_task(void *arg)
       {
          printer.setNextCommand(recvComm);
          firstCommRecv = true;
+         printer.printRoutine();
       }
       else
       {
          //if(firstCommRecv) ESP_LOGE("PRINTER TASK", "queue empty");
+         break;
       }
     }
-    printer.printRoutine();
-
+    
     //===========================Statistic=============================================
     xStatus = xQueueReceive(statisticQueue, &statData, pdMS_TO_TICKS(0));
     if(xStatus == pdPASS)

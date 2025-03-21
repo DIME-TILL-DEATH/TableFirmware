@@ -31,6 +31,7 @@ static bool IRAM_ATTR rTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_a
   UBaseType_t isrStatus = taskENTER_CRITICAL_FROM_ISR();
   printer.makeRStep();
   taskEXIT_CRITICAL_FROM_ISR(isrStatus);
+  portYIELD_FROM_ISR();
   return pdFALSE;
 }
 
@@ -39,6 +40,7 @@ static bool IRAM_ATTR fiTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_
   UBaseType_t isrStatus = taskENTER_CRITICAL_FROM_ISR();
   printer.makeFiStep();
   taskEXIT_CRITICAL_FROM_ISR(isrStatus);
+  portYIELD_FROM_ISR();
   return pdFALSE;
 }
 

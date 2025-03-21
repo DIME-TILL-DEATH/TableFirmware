@@ -114,6 +114,7 @@ void Printer::printRoutine()
             if(nextComm != nullptr)
             {
                 setState(PrinterState::HANDLE_COMMAND);
+                printRoutine();
             }
             break;
         }
@@ -132,6 +133,7 @@ void Printer::printRoutine()
                     }
                     case GCode::GCommType::G1:
                     {
+                        gpio_set_level(GPIO_NUM_23, 1);
                         GCode::G1Comm* g1Comm = static_cast<GCode::G1Comm*>(nextComm);
                         if(g1Comm)
                         {
@@ -140,7 +142,7 @@ void Printer::printRoutine()
                             targetPosition.y = targetPosition.y * printScaleCoef;
 
                             setState(PrinterState::SET_POINT);
-
+                            printRoutine();
                             //printf("point(%lf, %lf)", targetPosition.x, targetPosition.y);
                         }
                         break;
@@ -171,7 +173,8 @@ void Printer::printRoutine()
         {
             if(targetPosition.x == currentPosition.x && currentPosition.y == targetPosition.y)
             {
-                setState(PrinterState::HANDLE_COMMAND);
+                // setState(PrinterState::HANDLE_COMMAND);
+                setState(PrinterState::IDLE);
                 return; //skip point
             }
 
@@ -187,10 +190,10 @@ void Printer::printRoutine()
             stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2)));// / speed;
 
             // INFO block==========
-               printf("Point num: %d\r\n", pointNum);
+            //    printf("Point num: %d\r\n", pointNum);
 
 
-               printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
+            //    printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
             //    printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
             //    printf("POLAR: current(%lf, %lf), target(%lf, %lf)\r\n", currentPolarPosition.r, currentPolarPosition.fi* 360 / (M_PI * 2), 
             //    targetPolarPosition.r, targetPolarPosition.fi* 360 / (M_PI * 2));
@@ -200,20 +203,24 @@ void Printer::printRoutine()
             pointNum++;
 
             setState(PrinterState::SET_STEP);
+            gpio_set_level(GPIO_NUM_23, 0);
+            printRoutine();
             break;
         }
 
         case PrinterState::SET_STEP:
         {
-            gpio_set_level(GPIO_NUM_23, 1);
-
             double_t minErrX = (stepX == 0) ? stepSize : fabs(stepX);
             double_t minErrY = (stepY == 0) ? stepSize : fabs(stepY);
 
             if((fabs(targetPosition.x - currentPosition.x) < minErrX) && (fabs(targetPosition.y - currentPosition.y) < minErrY))
             {
+                gpio_set_level(GPIO_NUM_23, 1);
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-                setState(PrinterState::HANDLE_COMMAND);
+                // setState(PrinterState::HANDLE_COMMAND);
+                setState(PrinterState::IDLE);
+                gpio_set_level(GPIO_NUM_23, 0);
+                // printRoutine();
             }
             else
             {
@@ -252,8 +259,6 @@ void Printer::printRoutine()
                 }
 
                 setState(PrinterState::PRINTING);
-
-                gpio_set_level(GPIO_NUM_23, 0);
             }
             break;
         }
@@ -262,11 +267,15 @@ void Printer::printRoutine()
         {
             if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
             {
+                gpio_set_level(GPIO_NUM_23, 1);
                 //printf("===coords compare finish\r\n");
                 rTicksCounter = 0;
                 fiTicksCounter = 0;
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-                setState(PrinterState::HANDLE_COMMAND);
+                // setState(PrinterState::HANDLE_COMMAND);
+                setState(PrinterState::IDLE);
+                gpio_set_level(GPIO_NUM_23, 0);
+                // printRoutine();  // kill pause  
                 break;
             }
 
