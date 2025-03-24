@@ -1,9 +1,10 @@
 #ifndef PRINTSEQEUNCE_HPP
 #define PRINTSEQUENCE_HPP
 
-#include "hardware/printer.hpp"
+#include "hardware/abstractprinter.hpp"
+#include "hardware/polarprinter.hpp"
 
-extern Printer printer;
+extern AbstractPrinter* printer;
 void Printer_Init();
 
 #endif

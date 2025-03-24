@@ -30,12 +30,8 @@ class PrinterPins
         PinState getFiStep();
         PinState getFiDir();
     private:
-        // gpio_num_t pinRStep{PIN_RSTEP};
-        // gpio_num_t pinRDir{PIN_RDIR};
-        // gpio_num_t pinFiStep{PIN_FISTEP};
-        // gpio_num_t pinFiDir{PIN_FIDIR};
 
-        PinState rStep{PinState::RESET};
+        PinState xMotorStep{PinState::RESET};   
         PinState fiStep{PinState::RESET};
         PinState rDir{PinState::RESET};
         PinState fiDir{PinState::RESET};

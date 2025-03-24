@@ -22,7 +22,8 @@
 #define PIN_SPITOSR_CLK GPIO_NUM_16
 #define PIN_SPITOSR_CS GPIO_NUM_17
 
-#define PIN_ENDSTOP_R GPIO_NUM_35   //Y
-#define PIN_ENDSTOP_FI GPIO_NUM_34  //Z
+#define PIN_FISRT_ENDSTOP GPIO_NUM_34  //Z pins on board, Polar: Fi, Decart: X coordinates
+#define PIN_SECOND_ENDSTOP GPIO_NUM_35   //Y pins on board, Polar: R, Decart: Y coordinates
+
 
 #endif

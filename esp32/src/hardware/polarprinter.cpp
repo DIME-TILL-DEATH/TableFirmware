@@ -1,42 +1,25 @@
-#include <math.h>
+#include "polarprinter.hpp"
 
+#include <math.h>
 #include "esp_log.h"
-#include "printer.hpp"
 
 #include "filemanager/settings.hpp"
 
-Printer::Printer()
+PolarPrinter::PolarPrinter()
 {
-    m_state = PrinterState::IDLE;
-    m_previousState = m_state;
-
-    speed = 25;
     coordSysRotation = 0;
-    printScaleCoef = 1;
-
-    currentPosition.x = 0;
-    currentPosition.y = 0;
 
     currentPolarPosition.r = 0;
     currentPolarPosition.fi = 0;
 
     setRGearTeethCount(20);
-    setFiGearTeethCount(20, 160);
+    setFiGearTeethCount(20, 160);  
+
+    minRPeriod = 250;
+    minFiPeriod = 350;
 }
 
-void Printer::initTimers(gptimer_alarm_cb_t rTimerCb,
-                    gptimer_alarm_cb_t fiTimerCb)
-{  
-    rTimer = new IntervalTimer(rTimerCb);
-    fiTimer = new IntervalTimer(fiTimerCb);
-}
-
-void Printer::initPins(gpio_isr_t endStops_cb)
-{
-    printerPins = new Pins::PrinterPins(endStops_cb);
-}
-
-void Printer::loadSettings()
+void PolarPrinter::loadSettings()
 {
     speed = Settings::getSetting(Settings::Digit::PRINT_SPEED);
     coordSysRotation = (Settings::getSetting(Settings::Digit::PRINT_ROTATION) / 180) * M_PI;
@@ -54,12 +37,12 @@ void Printer::loadSettings()
     speed, coordSysRotation, printScaleCoef, correctionLength, pauseInterval, settingFiGear2TeethCount);  
 }
 
-void Printer::findCenter()
+void PolarPrinter::findCenter()
 {
     pauseThread();
 
-    rTimer->setInterval(350);
-    fiTimer->setInterval(350);
+    secondCoordTimer->setInterval(350);
+    firstCoordTimer->setInterval(350);
 
     printf("=>Finding table center...\r\n");
     currentPosition.x = 0;
@@ -67,17 +50,17 @@ void Printer::findCenter()
 
     pointNum = 1;
 
-    fiCenterTrigger = false;
-    rCenterTrigger = false;
-    setState(PrinterState::SEARCH_FI_ZERO);
+    firstCoordEndstopTrigger = false;
+    secondCoordEndstopTrigger = false;
+    setState(PrinterState::SEARCH_FIRST_ZERO);
 
 #ifdef GLOBAL_IGNORE_ENDSTOPS
     fiCenterTrigger = true;
 #else
-    if(gpio_get_level(PIN_ENDSTOP_FI) == Pins::PinState::SET)
+    if(gpio_get_level(PIN_FISRT_ENDSTOP) == Pins::PinState::SET)
     {
         setStep(0, M_PI/8, 2);
-        setState(PrinterState::RESCAN_FI_ZERO);
+        setState(PrinterState::RESCAN_FIRST_ZERO);
     }
     else
     {
@@ -88,24 +71,19 @@ void Printer::findCenter()
 #ifdef GLOBAL_IGNORE_ENDSTOPS
     rCenterTrigger = true;
 #else
-    if(gpio_get_level(PIN_ENDSTOP_R) == Pins::PinState::RESET)
+    if(gpio_get_level(PIN_SECOND_ENDSTOP) == Pins::PinState::RESET)
     { 
-       rCenterTrigger = true;
+       secondCoordEndstopTrigger = true;
     }
 #endif 
 
-    gpio_intr_enable(PIN_ENDSTOP_R);
-    gpio_intr_enable(PIN_ENDSTOP_FI);
+    gpio_intr_enable(PIN_SECOND_ENDSTOP);
+    gpio_intr_enable(PIN_FISRT_ENDSTOP);
   
     resumeThread();
 }
 
-void Printer::setNextCommand(GCode::GAbstractComm* command)
-{
-    nextComm = command;
-}
-
-void Printer::printRoutine()
+void PolarPrinter::printRoutine()
 {
     switch(m_state)
     {
@@ -269,8 +247,8 @@ void Printer::printRoutine()
             {
                 gpio_set_level(GPIO_NUM_23, 1);
                 //printf("===coords compare finish\r\n");
-                rTicksCounter = 0;
-                fiTicksCounter = 0;
+                secondMotorTicksCounter = 0;
+                firstMotorTicksCounter = 0;
                 currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
                 // setState(PrinterState::HANDLE_COMMAND);
                 setState(PrinterState::IDLE);
@@ -279,7 +257,7 @@ void Printer::printRoutine()
                 break;
             }
 
-            if(rTicksCounter==0 && fiTicksCounter==0)
+            if(secondMotorTicksCounter==0 && firstMotorTicksCounter==0)
             {
                 setState(PrinterState::SET_STEP);   
                 printRoutine();  // kill pause  
@@ -287,50 +265,50 @@ void Printer::printRoutine()
             break;
         }
 
-        case PrinterState::RESCAN_FI_ZERO:
+        case PrinterState::RESCAN_FIRST_ZERO:
         {
-            if(fiTicksCounter == 0)
+            if(firstMotorTicksCounter == 0)
             {
                 setStep(0, -2*M_PI, 25);
-                setState(PrinterState::SEARCH_FI_ZERO);
+                setState(PrinterState::SEARCH_FIRST_ZERO);
                 printf("Fi rescaning\r\n");
-                fiCenterTrigger = false;
+                firstCoordEndstopTrigger = false;
             }
             break;
         }
 
-        case PrinterState::SEARCH_FI_ZERO:
+        case PrinterState::SEARCH_FIRST_ZERO:
         {
-            if(fiCenterTrigger)
+            if(firstCoordEndstopTrigger)
             {               
                 setStep(-rMoveDiapason * 1.1, 0, 7.5); // 10% margin
-                setState(PrinterState::SEARCH_R_ZERO);
+                setState(PrinterState::SEARCH_SECOND_ZERO);
                 printf("Fi zeroed\r\n");
             }
             break;
         }
 
-        case PrinterState::RESCAN_R_ZERO:
+        case PrinterState::RESCAN_SECOND_ZERO:
         {
-            if(rTicksCounter == 0)
+            if(secondMotorTicksCounter == 0)
             {
                 setStep(0, M_PI/4, 2.5); 
-                setState(PrinterState::RESCAN_FI_ZERO);
-                rCenterTrigger = false;
-                fiCenterTrigger = false;
+                setState(PrinterState::RESCAN_FIRST_ZERO);
+                secondCoordEndstopTrigger = false;
+                firstCoordEndstopTrigger = false;
                 printf("R rescaning\r\n");
             }
             break;
         }
 
-        case PrinterState::SEARCH_R_ZERO:
+        case PrinterState::SEARCH_SECOND_ZERO:
         {
-            if(rCenterTrigger)
+            if(secondCoordEndstopTrigger)
             {
                 abortPoint();
 
-                gpio_intr_disable(PIN_ENDSTOP_R);
-                gpio_intr_disable(PIN_ENDSTOP_FI);
+                gpio_intr_disable(PIN_SECOND_ENDSTOP);
+                gpio_intr_disable(PIN_FISRT_ENDSTOP);
 
                 printf("R zeroed\r\n");
 
@@ -338,18 +316,18 @@ void Printer::printRoutine()
                 setState(PrinterState::CORRECTING_CENTER);
                 break;
             }
-            else if(rTicksCounter == 0)
+            else if(secondMotorTicksCounter == 0)
             {
                 ESP_LOGE(TAG, "R center nor found! Pad is out of bounds. Correcting\r\n");
                 setStep(rMoveDiapason * 1.5, 0, 2 * rMoveDiapason / 370);
-                setState(PrinterState::RESCAN_R_ZERO);
+                setState(PrinterState::RESCAN_SECOND_ZERO);
             }
             break;
         }
 
         case PrinterState::CORRECTING_CENTER:
         {
-            if(rTicksCounter == 0)
+            if(secondMotorTicksCounter == 0)
             {
                 currentPolarPosition.r = 0;
                 currentPolarPosition.fi = 0;
@@ -363,7 +341,7 @@ void Printer::printRoutine()
 
         case PrinterState::ROTATE_COORD_SYS:
         {
-            if(fiTicksCounter == 0)
+            if(firstMotorTicksCounter == 0)
             {
                 currentPolarPosition.r = 0;
                 currentPolarPosition.fi = 0;
@@ -393,11 +371,11 @@ void Printer::printRoutine()
     }
 }
 
-void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
+void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
 {
     bool rDirection;
 
-    rTicksCounter = lengthToMotorTicks(abs(dR));
+    secondMotorTicksCounter = lengthToMotorTicks(abs(dR));
     int32_t correctionTicks = lengthToMotorTicks(abs(dFi) * errRonRadian);
 
     if(dFi > 0) // counter clokwise, R decrease
@@ -406,16 +384,16 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
         if(dR >= 0)
         {
             rDirection = 0;
-            rTicksCounter += correctionTicks;
+            secondMotorTicksCounter += correctionTicks;
         }
         else
         {
-            int32_t resultTicks = rTicksCounter - correctionTicks;
+            int32_t resultTicks = secondMotorTicksCounter - correctionTicks;
 
             if(resultTicks > 0) rDirection = 1;
             else rDirection = 0;
 
-            rTicksCounter = abs(resultTicks);
+            secondMotorTicksCounter = abs(resultTicks);
         }
     }
     else // clockwise, R increase
@@ -423,122 +401,77 @@ void Printer::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
         printerPins->fiDirState(Pins::PinState::SET);
         if(dR >= 0)
         {
-            int32_t resultTicks = rTicksCounter - correctionTicks;
+            int32_t resultTicks = secondMotorTicksCounter - correctionTicks;
 
             if(resultTicks > 0) rDirection = 0;
             else rDirection = 1;
 
-            rTicksCounter = abs(resultTicks);
+            secondMotorTicksCounter = abs(resultTicks);
         }
         else
         {
             rDirection = 1;
-            rTicksCounter += correctionTicks;
+            secondMotorTicksCounter += correctionTicks;
         }
     }
 
     printerPins->rDirState(static_cast<Pins::PinState>(rDirection));
 
-    fiTicksCounter = radiansToMotorTicks(abs(dFi));
+    firstMotorTicksCounter = radiansToMotorTicks(abs(dFi));
     //if(abs(dFi) > M_PI_2) printf("Long dFi move, dFi: %lf, fi ticks: %d\r\n", dFi, fiTicksCounter);
 
 
-    float_t rPeriod = stepTimeInSec/rTicksCounter;
-    float_t fiPeriod = stepTimeInSec/fiTicksCounter;
+    float_t rPeriod = stepTimeInSec/secondMotorTicksCounter;
+    float_t fiPeriod = stepTimeInSec/firstMotorTicksCounter;
 
     setTIMPeriods(rPeriod, fiPeriod);
 }
-void Printer::setState(PrinterState newState)
-{
-    if(newState != m_state) 
-    {
-        m_previousState = m_state;
-        m_state = newState;
-    }
-}
 
-void Printer::returnToPreviousState()
-{
-    m_state = m_previousState;
-}
 
-uint32_t Printer::radiansToMotorTicks(double_t radians)
+uint32_t PolarPrinter::radiansToMotorTicks(double_t radians)
 {
     return round(fiTicksCoef * radians);
 }
 
-uint32_t Printer::lengthToMotorTicks(double_t length)
+uint32_t PolarPrinter::lengthToMotorTicks(double_t length)
 {
     return round(rTicksCoef * length);
 }
 
-void Printer::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
+void PolarPrinter::setFiGearTeethCount(uint16_t newFiGear1TeethCount, uint16_t newFiGear2TeethCount)
 {
-    uint32_t timerRPeriod = round(rStepTime * timerPrescaler / 2);
-    uint32_t timerFiPeriod = round(fiStepTime * timerPrescaler / 2);
-    
-    if(timerRPeriod < minRPeriod)
-    {
-        float_t fiCorretionCoef;
-        fiCorretionCoef = (float_t)minRPeriod / (float_t)timerRPeriod;
-        timerRPeriod = minRPeriod;
-        timerFiPeriod *=  fiCorretionCoef;
-        //printf("R min timer!(fi timer: %d, r timer: %d), Fi corretion coef: %lf\r\n", timerFiPeriod, timerRPeriod, fiCorretionCoef);
-    }
+    fiGear1TeethCount = newFiGear1TeethCount;
+    fiGear2TeethCount = newFiGear2TeethCount;
 
-    if(timerFiPeriod < minFiPeriod)
-    {
-        float_t rCorretionCoef;
-        rCorretionCoef = (float_t)minFiPeriod / (float_t)timerFiPeriod;
-        timerFiPeriod = minFiPeriod;
-        timerRPeriod *=  rCorretionCoef;
-        //printf("Fi min timer!(fi timer: %d, r timer: %d), R correction, coef: %lf\r\n", timerFiPeriod, timerRPeriod, rCorretionCoef);
-    }
+    fiTicksCoef = (float_t)uTicks * (((float_t)fiGear2TeethCount/(float_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
+    errRonRadian = fiGear1TeethCount*rGearStep/(2*M_PI); // 40mm error in R on 2pi (360) rotation
+                                                // clockwise direction: -R
 
-    rTimer->setInterval(timerRPeriod);
-    fiTimer->setInterval(timerFiPeriod);
+    recountValuesOnTick();
 }
 
-void IRAM_ATTR Printer::makeRStep()
+void PolarPrinter::setRGearTeethCount(uint16_t newRGearTeethCount)
 {
-    if(m_state == PrinterState::PRINTING || 
-    m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || 
-    m_state == PrinterState::CORRECTING_CENTER || m_state == PrinterState::ROTATE_COORD_SYS ||
-    m_state == PrinterState::RESCAN_FI_ZERO || m_state == PrinterState::RESCAN_R_ZERO)
-    {
-        if(rTicksCounter>0)
-        {
-            if(printerPins->getRStep() == Pins::PinState::RESET)
-            {
-
-                printerPins->rStepState(Pins::PinState::SET);
-
-                if(printerPins->getRDir() == Pins::PinState::RESET)
-                {
-                    currentPolarPosition.r += mmOnRTick;
-                }
-                else
-                {
-                    currentPolarPosition.r -= mmOnRTick;
-                }
-            }
-            else
-            {
-                printerPins->rStepState(Pins::PinState::RESET);
-                rTicksCounter--;
-            }
-        }
-    }
+    rGearTeethCount = newRGearTeethCount;
+    rTicksCoef = (float_t)uTicks * (float_t)motorRoundTicks / (float_t)(rGearStep * rGearTeethCount);
+    recountValuesOnTick();
 }
 
-void IRAM_ATTR Printer::makeFiStep()
+void PolarPrinter::recountValuesOnTick()
+{
+    mmOnRTick = 1/rTicksCoef;
+    radOnFiTick = 1/fiTicksCoef;
+    errRonTick = errRonRadian/fiTicksCoef;    
+}
+
+void IRAM_ATTR PolarPrinter::firtsMotorMakeStep()
 {
     if(m_state == PrinterState::PRINTING || 
-    m_state == PrinterState::SEARCH_FI_ZERO || m_state == PrinterState::SEARCH_R_ZERO || 
+    m_state == PrinterState::SEARCH_FIRST_ZERO || m_state == PrinterState::SEARCH_SECOND_ZERO || 
     m_state == PrinterState::CORRECTING_CENTER || m_state == PrinterState::ROTATE_COORD_SYS ||
-    m_state == PrinterState::RESCAN_FI_ZERO || m_state == PrinterState::RESCAN_R_ZERO)
+    m_state == PrinterState::RESCAN_FIRST_ZERO || m_state == PrinterState::RESCAN_SECOND_ZERO)
     {
-        if(fiTicksCounter>0)
+        if(firstMotorTicksCounter>0)
         {
             if(printerPins->getFiStep() == Pins::PinState::RESET)
             {
@@ -558,88 +491,40 @@ void IRAM_ATTR Printer::makeFiStep()
             else
             {
                 printerPins->fiStepState(Pins::PinState::RESET);
-                fiTicksCounter--;
+                firstMotorTicksCounter--;
             }
         }
     }
 }
 
-void Printer::pauseThread()
+void IRAM_ATTR PolarPrinter::secondMotorMakeStep()
 {
-    if(rTimer && fiTimer)
+    if(m_state == PrinterState::PRINTING || 
+    m_state == PrinterState::SEARCH_FIRST_ZERO || m_state == PrinterState::SEARCH_SECOND_ZERO || 
+    m_state == PrinterState::CORRECTING_CENTER || m_state == PrinterState::ROTATE_COORD_SYS ||
+    m_state == PrinterState::RESCAN_FIRST_ZERO || m_state == PrinterState::RESCAN_SECOND_ZERO)
     {
-        rTimer->stop();
-        fiTimer->stop();
+        if(secondMotorTicksCounter>0)
+        {
+            if(printerPins->getRStep() == Pins::PinState::RESET)
+            {
+
+                printerPins->rStepState(Pins::PinState::SET);
+
+                if(printerPins->getRDir() == Pins::PinState::RESET)
+                {
+                    currentPolarPosition.r += mmOnRTick;
+                }
+                else
+                {
+                    currentPolarPosition.r -= mmOnRTick;
+                }
+            }
+            else
+            {
+                printerPins->rStepState(Pins::PinState::RESET);
+                secondMotorTicksCounter--;
+            }
+        }
     }
-}
-
-void Printer::resumeThread()
-{
-    if(rTimer && fiTimer)
-    {
-        rTimer->start();
-        fiTimer->start();
-    }
-}
-
-void Printer::abortPoint()
-{
-    rTicksCounter = 0;
-    fiTicksCounter = 0;
-}
-
-void Printer::stop()
-{
-    abortPoint();
-    setState(PrinterState::IDLE);
-}
-
-void Printer::pause(uint32_t time)
-{
-    setState(PrinterState::PAUSE);
-    pauseCounter = time;
-}
-
-void Printer::pauseResume()
-{
-    if(m_state == PrinterState::PAUSE)
-    {
-        returnToPreviousState();
-    }
-    else
-    {
-        pause(infinitePause);
-    }
-    
-}
-
-bool Printer::isPrinterFree()
-{
-    return m_state == PrinterState::IDLE;
-}
-
-void Printer::setRGearTeethCount(uint16_t newRGearTeethCount)
-{
-    rGearTeethCount = newRGearTeethCount;
-    rTicksCoef = (float_t)uTicks * (float_t)motorRoundTicks / (float_t)(rGearStep * rGearTeethCount);
-    recountValuesOnTick();
-}
-
-void Printer::setFiGearTeethCount(uint16_t newFiGear1TeethCount, uint16_t newFiGear2TeethCount)
-{
-    fiGear1TeethCount = newFiGear1TeethCount;
-    fiGear2TeethCount = newFiGear2TeethCount;
-
-    fiTicksCoef = (float_t)uTicks * (((float_t)fiGear2TeethCount/(float_t)fiGear1TeethCount) * motorRoundTicks) / (2 * M_PI);
-    errRonRadian = fiGear1TeethCount*rGearStep/(2*M_PI); // 40mm error in R on 2pi (360) rotation
-                                                // clockwise direction: -R
-
-    recountValuesOnTick();
-}
-
-void Printer::recountValuesOnTick()
-{
-    mmOnRTick = 1/rTicksCoef;
-    radOnFiTick = 1/fiTicksCoef;
-    errRonTick = errRonRadian/fiTicksCoef;    
 }
