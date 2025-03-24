@@ -74,6 +74,10 @@ public:
 protected:
     constexpr static char TAG[] = "PRINTER";
 
+    double_t stepX;
+    double_t stepY;
+    double_t stepTime;
+
     Pins::PrinterPins* printerPins;
 
     IntervalTimer* firstCoordTimer;
@@ -101,7 +105,7 @@ protected:
 
     uint32_t pauseInterval;
 
-    void setTIMPeriods(float_t rStepTime, float_t fiStepTime);
+    void setTIMPeriods(float_t xStepTime, float_t yStepTime);
 
     void setState(PrinterState newState);
     void returnToPreviousState();

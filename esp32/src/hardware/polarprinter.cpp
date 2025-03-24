@@ -424,7 +424,7 @@ void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
     float_t rPeriod = stepTimeInSec/secondMotorTicksCounter;
     float_t fiPeriod = stepTimeInSec/firstMotorTicksCounter;
 
-    setTIMPeriods(rPeriod, fiPeriod);
+    setTIMPeriods(fiPeriod, rPeriod);
 }
 
 

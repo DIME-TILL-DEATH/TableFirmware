@@ -47,31 +47,31 @@ void AbstractPrinter::setNextCommand(GCode::GAbstractComm* command)
     nextComm = command;
 }
 
-void AbstractPrinter::setTIMPeriods(float_t rStepTime, float_t fiStepTime)
+void AbstractPrinter::setTIMPeriods(float_t firstMotorStepTime, float_t secondMotorStepTime)
 {
-    uint32_t timerRPeriod = round(rStepTime * timerPrescaler / 2);
-    uint32_t timerFiPeriod = round(fiStepTime * timerPrescaler / 2);
+    uint32_t timerFirstMotorPeriod = round(firstMotorStepTime * timerPrescaler / 2);
+    uint32_t timerSecondMotorPeriod = round(secondMotorStepTime * timerPrescaler / 2);  
     
-    if(timerRPeriod < minRPeriod)
+    if(timerSecondMotorPeriod < minRPeriod)
     {
         float_t fiCorretionCoef;
-        fiCorretionCoef = (float_t)minRPeriod / (float_t)timerRPeriod;
-        timerRPeriod = minRPeriod;
-        timerFiPeriod *=  fiCorretionCoef;
+        fiCorretionCoef = (float_t)minRPeriod / (float_t)timerSecondMotorPeriod;
+        timerSecondMotorPeriod = minRPeriod;
+        timerFirstMotorPeriod *=  fiCorretionCoef;
         //printf("R min timer!(fi timer: %d, r timer: %d), Fi corretion coef: %lf\r\n", timerFiPeriod, timerRPeriod, fiCorretionCoef);
     }
 
-    if(timerFiPeriod < minFiPeriod)
+    if(timerFirstMotorPeriod < minFiPeriod)
     {
         float_t rCorretionCoef;
-        rCorretionCoef = (float_t)minFiPeriod / (float_t)timerFiPeriod;
-        timerFiPeriod = minFiPeriod;
-        timerRPeriod *=  rCorretionCoef;
+        rCorretionCoef = (float_t)minFiPeriod / (float_t)timerFirstMotorPeriod;
+        timerFirstMotorPeriod = minFiPeriod;
+        timerSecondMotorPeriod *=  rCorretionCoef;
         //printf("Fi min timer!(fi timer: %d, r timer: %d), R correction, coef: %lf\r\n", timerFiPeriod, timerRPeriod, rCorretionCoef);
     }
 
-    secondCoordTimer->setInterval(timerRPeriod);
-    firstCoordTimer->setInterval(timerFiPeriod);
+    firstCoordTimer->setInterval(timerFirstMotorPeriod);
+    secondCoordTimer->setInterval(timerSecondMotorPeriod); 
 }
 
 void AbstractPrinter::pauseThread()

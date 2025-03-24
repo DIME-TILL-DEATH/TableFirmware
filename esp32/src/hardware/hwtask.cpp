@@ -24,6 +24,7 @@
 #include "leds/pwmledstrip.hpp"
 
 #include "polarprinter.hpp"
+#include "decartprinter.hpp"
 
 
 static const char *TAG = "HW TASK";
@@ -278,8 +279,8 @@ void hardware_task(void *arg)
     xStatus = xQueueReceive(statisticQueue, &statData, pdMS_TO_TICKS(0));
     if(xStatus == pdPASS)
     {
-        ESP_LOGV(TAG, "Machine minutes: %d", statData.machineMinutes);  
-        Settings::saveSetting(Settings::Digit::MACHINE_MINUTES, statData.machineMinutes);
+        ESP_LOGI(TAG, "Machine minutes: %d", statData.machineMinutes);  //LOGV
+        // Settings::saveSetting(Settings::Digit::MACHINE_MINUTES, statData.machineMinutes);
     }
 
     //===========================Net request===========================================

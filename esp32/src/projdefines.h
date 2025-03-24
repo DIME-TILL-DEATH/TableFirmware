@@ -4,7 +4,7 @@
 // X pads on board - Polar: Fi motor, Decart: Left motor
 // Z pads on board - Polar: R motor, Decart: Right motor
 
-#define PRINTER_POLAR //PRINTER_DECART
+#define PRINTER_DECART //PRINTER_POLAR
 
 #define PRIORITY_STATISTIC_TASK 5
 #define PRIORITY_TCP_ANSWER_TASK 10

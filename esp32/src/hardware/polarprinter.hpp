@@ -23,10 +23,6 @@ private:
     Coord::PolarPoint currentPolarPosition{0, 0};
     Coord::PolarPoint targetPolarPosition{0, 0};
 
-    double_t stepX;
-    double_t stepY;
-    double_t stepTime;
-
     float_t coordSysRotation;
     float_t correctionLength{0};
 
