@@ -56,52 +56,52 @@ PrinterPins::PrinterPins(gpio_isr_t endStops_cb)
     gpio_intr_disable(PIN_FISRT_ENDSTOP);
 }
 
-void PrinterPins::rStepState(PinState newState)
+void PrinterPins::setSecondMotorStepState(PinState newState)
 {
-    xMotorStep = newState;
+    secondMotorStep = newState;
     // gpio_set_level(pinRStep, rStep);
     srWrite();
 }
 
-void PrinterPins::fiStepState(PinState newState)
+void PrinterPins::setFirstMotorStepState(PinState newState)
 {
-    fiStep = newState;
+    firstMotorStep = newState;
     // gpio_set_level(pinFiStep, fiStep);
     srWrite();
 }
 
-void PrinterPins::rDirState(PinState newState)
+void PrinterPins::setSecondMotorDirState(PinState newState)
 {
-    rDir = newState;
+    secondMotorDir = newState;
     // gpio_set_level(pinRDir, rDir);
     srWrite();
 }
 
-void PrinterPins::fiDirState(PinState newState)
+void PrinterPins::setFirstMotorDirState(PinState newState)
 {
-    fiDir = newState;
+    firstMotorDir = newState;
     // gpio_set_level(pinFiDir, fiDir);
     srWrite();
 }
 
-PinState PrinterPins::getRStep()
+PinState PrinterPins::getSecondMotorStep()
 {
-    return xMotorStep;
+    return secondMotorStep;
 }
 
-PinState PrinterPins::getFiStep()
+PinState PrinterPins::getFirstMotorStep()
 {
-    return fiStep;
+    return firstMotorStep;
 }
 
-PinState PrinterPins::getRDir()
+PinState PrinterPins::getSecondMotorDir()
 {
-    return rDir;
+    return secondMotorDir;
 }
 
-PinState PrinterPins::getFiDir()
+PinState PrinterPins::getFirstMotorDir()
 {
-    return fiDir;
+    return firstMotorDir;
 }
 
 void PrinterPins::srWrite()
@@ -109,7 +109,7 @@ void PrinterPins::srWrite()
     esp_err_t ret;
     spi_transaction_t t = {};
 
-    srWord = 0 | (xMotorStep<<1) | (rDir<<2) | (fiStep<<3)  | (fiDir<<4);
+    srWord = 0 | (secondMotorStep<<1) | (secondMotorDir<<2) | (firstMotorStep<<3)  | (firstMotorDir<<4);
                
     t.flags=SPI_TRANS_USE_TXDATA;
     t.length=8;                

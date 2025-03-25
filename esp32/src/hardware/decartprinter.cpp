@@ -146,7 +146,6 @@ void DecartPrinter::printRoutine()
         {
             if(targetPosition.x == currentPosition.x && currentPosition.y == targetPosition.y)
             {
-                // setState(PrinterState::HANDLE_COMMAND);
                 setState(PrinterState::IDLE);
                 return; //skip point
             }
@@ -154,83 +153,31 @@ void DecartPrinter::printRoutine()
             float_t deltaX = targetPosition.x - currentPosition.x;
             float_t deltaY = targetPosition.y - currentPosition.y;
 
-            float_t lineLength = sqrt(pow((deltaX), 2) + pow((deltaY), 2));
-            float_t steps = lineLength/stepSize;
             stepX = deltaX;// / steps;
             stepY = deltaY;// / steps;
 
             stepTime =  (sqrt(pow((stepX), 2) + pow((stepY), 2)));// / speed;
 
             // INFO block==========
-               printf("Point num: %d\r\n", pointNum);
+            //    printf("Point num: %d\r\n", pointNum);
 
-
-               printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
-               printf("length: %lf, steps: %lf, stepX: %lf, stepY: %lf\r\n", lineLength, steps, stepX, stepY);
-               printf("\r\n");
+            //    printf("DECART: current(%lf, %lf), target(%lf, %lf)\r\n", currentPosition.x, currentPosition.y, targetPosition.x, targetPosition.y);
+            //    printf("stepX: %lf, stepY: %lf\r\n", stepX, stepY);
+            //    printf("\r\n");
             //=================================
 
             pointNum++;
 
-            setState(PrinterState::SET_STEP);
+            setMove(stepX, stepY, stepTime/speed);
+            setState(PrinterState::PRINTING);
+            // printRoutine();
+
             gpio_set_level(GPIO_NUM_23, 0);
-            printRoutine();
-            break;
-        }
-
-        case PrinterState::SET_STEP:
-        {
-            // double_t minErrX = (stepX == 0) ? stepSize : fabs(stepX);
-            // double_t minErrY = (stepY == 0) ? stepSize : fabs(stepY);
-
-            // if((fabs(targetPosition.x - currentPosition.x) < minErrX) && (fabs(targetPosition.y - currentPosition.y) < minErrY))
-            // {
-            //     gpio_set_level(GPIO_NUM_23, 1);
-            //     currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-            //     // setState(PrinterState::HANDLE_COMMAND);
-            //     setState(PrinterState::IDLE);
-            //     gpio_set_level(GPIO_NUM_23, 0);
-            //     // printRoutine();
-            // }
-            // else
-            // {
-                // Coord::DecartPoint stepPosition{currentPosition.x + stepX, currentPosition.y + stepY};
-
-                // Coord::PolarPoint curPolarPoint = Coord::convertDecartToPolar(currentPosition);
-                // Coord::PolarPoint stepPolarPoint = Coord::convertDecartToPolar(stepPosition);
-
-                // double_t deltaX = stepPolarPoint.r - currentPosition.x;
-                // double_t deltaFi = stepPolarPoint.fi - curPolarPoint.fi;
-
-                setMove(stepX, stepY, stepTime/speed);
-
-                //printf("current fi: %lf, delta fi: %lf\r\n", currentPolarPosition.fi* 360 / (M_PI * 2), deltaFi * 360 / (M_PI * 2));
-
-                // currentPosition.x += stepX;
-                // currentPosition.y += stepY;
-
-
-                setState(PrinterState::PRINTING);
-            // }
             break;
         }
 
         case PrinterState::PRINTING:
         {
-            // if(fabs(targetPolarPosition.r-currentPolarPosition.r) < 0.25 && fabs(targetPolarPosition.fi-currentPolarPosition.fi) < 0.5 * 2* M_PI/360)
-            // {
-            //     gpio_set_level(GPIO_NUM_23, 1);
-            //     //printf("===coords compare finish\r\n");
-            //     secondMotorTicksCounter = 0;
-            //     firstMotorTicksCounter = 0;
-            //     currentPosition = Coord::convertPolarToDecart(currentPolarPosition);
-            //     // setState(PrinterState::HANDLE_COMMAND);
-            //     setState(PrinterState::IDLE);
-            //     gpio_set_level(GPIO_NUM_23, 0);
-            //     // printRoutine();  // kill pause  
-            //     break;
-            // }
-
             if(secondMotorTicksCounter==0 && firstMotorTicksCounter==0)
             {
                 currentPosition.x += stepX;
@@ -341,22 +288,19 @@ void DecartPrinter::printRoutine()
 
 void DecartPrinter::setMove(double_t dX, double_t dY, double_t moveTimeInSec)
 {
-
-//  printf("Long dFi move, dFi: %lf, fi ticks: %d\r\n", dFi, fiTicksCounter);
-
     int32_t motor1Ticks_sign = lengthToMotorTicks(dX) + lengthToMotorTicks(-dY);
     int32_t motor2Ticks_sign = lengthToMotorTicks(dX) - lengthToMotorTicks(-dY);
 
-    if(motor1Ticks_sign > 0) printerPins->fiDirState(Pins::PinState::RESET);
-    else printerPins->fiDirState(Pins::PinState::SET);
+    if(motor1Ticks_sign > 0) printerPins->setFirstMotorDirState(Pins::PinState::RESET);
+    else printerPins->setFirstMotorDirState(Pins::PinState::SET);
 
-    if(motor2Ticks_sign > 0) printerPins->rDirState(Pins::PinState::SET);
-    else printerPins->rDirState(Pins::PinState::RESET);
+    if(motor2Ticks_sign > 0) printerPins->setSecondMotorDirState(Pins::PinState::SET);
+    else printerPins->setSecondMotorDirState(Pins::PinState::RESET);
 
     firstMotorTicksCounter = abs(motor1Ticks_sign);
     secondMotorTicksCounter = abs(motor2Ticks_sign);
 
-    printf("SetMove, motor1: %d, motor2: %d\r\n", firstMotorTicksCounter, secondMotorTicksCounter);
+    // printf("SetMove, motor1: %d, motor2: %d\r\n", firstMotorTicksCounter, secondMotorTicksCounter);
 
     float_t yPeriod = moveTimeInSec/secondMotorTicksCounter;
     float_t xPeriod = moveTimeInSec/firstMotorTicksCounter;
@@ -373,24 +317,13 @@ void IRAM_ATTR DecartPrinter::firtsMotorMakeStep()
     {
         if(firstMotorTicksCounter>0)
         {
-            if(printerPins->getFiStep() == Pins::PinState::RESET)
+            if(printerPins->getFirstMotorStep() == Pins::PinState::RESET)
             {
-                printerPins->fiStepState(Pins::PinState::SET);
-
-                if(printerPins->getFiDir() == Pins::PinState::RESET)
-                {
-                //     currentPolarPosition.fi += radOnFiTick;
-                //     currentPolarPosition.r -= errRonTick;
-                }
-                else
-                {
-                //     currentPolarPosition.fi -= radOnFiTick;
-                //     currentPolarPosition.r += errRonTick;
-                }
+                printerPins->setFirstMotorStepState(Pins::PinState::SET);
             }
             else
             {
-                printerPins->fiStepState(Pins::PinState::RESET);
+                printerPins->setFirstMotorStepState(Pins::PinState::RESET);
                 firstMotorTicksCounter--;
             }
         }
@@ -406,23 +339,13 @@ void IRAM_ATTR DecartPrinter::secondMotorMakeStep()
     {
         if(secondMotorTicksCounter>0)
         {
-            if(printerPins->getRStep() == Pins::PinState::RESET)
+            if(printerPins->getSecondMotorStep() == Pins::PinState::RESET)
             {
-
-                printerPins->rStepState(Pins::PinState::SET);
-
-                if(printerPins->getRDir() == Pins::PinState::RESET)
-                {
-                    // currentPolarPosition.r += mmOnRTick;
-                }
-                else
-                {
-                    // currentPolarPosition.r -= mmOnRTick;
-                }
+                printerPins->setSecondMotorStepState(Pins::PinState::SET);
             }
             else
             {
-                printerPins->rStepState(Pins::PinState::RESET);
+                printerPins->setSecondMotorStepState(Pins::PinState::RESET);
                 secondMotorTicksCounter--;
             }
         }

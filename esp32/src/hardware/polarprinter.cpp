@@ -380,7 +380,7 @@ void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
 
     if(dFi > 0) // counter clokwise, R decrease
     {
-        printerPins->fiDirState(Pins::PinState::RESET);
+        printerPins->setFirstMotorDirState(Pins::PinState::RESET);
         if(dR >= 0)
         {
             rDirection = 0;
@@ -398,7 +398,7 @@ void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
     }
     else // clockwise, R increase
     {
-        printerPins->fiDirState(Pins::PinState::SET);
+        printerPins->setFirstMotorDirState(Pins::PinState::SET);
         if(dR >= 0)
         {
             int32_t resultTicks = secondMotorTicksCounter - correctionTicks;
@@ -415,7 +415,7 @@ void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
         }
     }
 
-    printerPins->rDirState(static_cast<Pins::PinState>(rDirection));
+    printerPins->setSecondMotorDirState(static_cast<Pins::PinState>(rDirection));
 
     firstMotorTicksCounter = radiansToMotorTicks(abs(dFi));
     //if(abs(dFi) > M_PI_2) printf("Long dFi move, dFi: %lf, fi ticks: %d\r\n", dFi, fiTicksCounter);
@@ -473,11 +473,11 @@ void IRAM_ATTR PolarPrinter::firtsMotorMakeStep()
     {
         if(firstMotorTicksCounter>0)
         {
-            if(printerPins->getFiStep() == Pins::PinState::RESET)
+            if(printerPins->getFirstMotorStep() == Pins::PinState::RESET)
             {
-                printerPins->fiStepState(Pins::PinState::SET);
+                printerPins->setFirstMotorStepState(Pins::PinState::SET);
 
-                if(printerPins->getFiDir() == Pins::PinState::RESET)
+                if(printerPins->getFirstMotorDir() == Pins::PinState::RESET)
                 {
                     currentPolarPosition.fi += radOnFiTick;
                     currentPolarPosition.r -= errRonTick;
@@ -490,7 +490,7 @@ void IRAM_ATTR PolarPrinter::firtsMotorMakeStep()
             }
             else
             {
-                printerPins->fiStepState(Pins::PinState::RESET);
+                printerPins->setFirstMotorStepState(Pins::PinState::RESET);
                 firstMotorTicksCounter--;
             }
         }
@@ -506,12 +506,12 @@ void IRAM_ATTR PolarPrinter::secondMotorMakeStep()
     {
         if(secondMotorTicksCounter>0)
         {
-            if(printerPins->getRStep() == Pins::PinState::RESET)
+            if(printerPins->getSecondMotorStep() == Pins::PinState::RESET)
             {
 
-                printerPins->rStepState(Pins::PinState::SET);
+                printerPins->setSecondMotorStepState(Pins::PinState::SET);
 
-                if(printerPins->getRDir() == Pins::PinState::RESET)
+                if(printerPins->getSecondMotorDir() == Pins::PinState::RESET)
                 {
                     currentPolarPosition.r += mmOnRTick;
                 }
@@ -522,7 +522,7 @@ void IRAM_ATTR PolarPrinter::secondMotorMakeStep()
             }
             else
             {
-                printerPins->rStepState(Pins::PinState::RESET);
+                printerPins->setSecondMotorStepState(Pins::PinState::RESET);
                 secondMotorTicksCounter--;
             }
         }
