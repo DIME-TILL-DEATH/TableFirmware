@@ -218,7 +218,7 @@ FM_RESULT FileManager::loadPrintFromPlaylist(uint16_t num)
 
     curPlsPos = num;
 
-    // Settings::saveSetting(Settings::Digit::LAST_PLAYLIST_POSITION, curPlsPos);
+    Settings::saveSetting(Settings::Digit::LAST_PLAYLIST_POSITION, curPlsPos);
 
     string currentFileName;
     if(playlist.size()>0)

@@ -35,6 +35,8 @@ public:
         MACHINE_MINUTES
     };
 
+    static void checkSettingsFile();
+
     static float_t getSetting(Settings::Digit setting);
     static std::string getSetting(Settings::String setting);
 

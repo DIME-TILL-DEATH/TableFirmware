@@ -312,6 +312,8 @@ void file_task(void *arg)
 {
   FM_RESULT result;
 
+  Settings::checkSettingsFile();
+
   uint32_t playlstPosition = Settings::getSetting(Settings::Digit::LAST_PLAYLIST_POSITION);
   std::string galleryName = Settings::getSetting(Settings::String::PRINT_GALLERY);
   

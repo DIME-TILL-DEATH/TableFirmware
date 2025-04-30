@@ -50,7 +50,7 @@ void DecartPrinter::findCenter()
     setState(PrinterState::SEARCH_FIRST_ZERO);
 
 #ifdef GLOBAL_IGNORE_ENDSTOPS
-    fiCenterTrigger = true;
+    firstCoordEndstopTrigger = true;
 #else
     if(gpio_get_level(PIN_FISRT_ENDSTOP) == Pins::PinState::SET)
     {
@@ -64,7 +64,7 @@ void DecartPrinter::findCenter()
 #endif  
 
 #ifdef GLOBAL_IGNORE_ENDSTOPS
-    rCenterTrigger = true;
+    secondCoordEndstopTrigger = true;
 #else
     if(gpio_get_level(PIN_SECOND_ENDSTOP) == Pins::PinState::SET)
     { 
@@ -205,7 +205,7 @@ void DecartPrinter::printRoutine()
         {
             if(firstCoordEndstopTrigger)
             {               
-                setMove(0, -yMoveDiapason * 1.1 / printScaleCoef, 10); // 10% margin
+                setMove(0, yMoveDiapason * 1.1 / printScaleCoef, 10); // 10% margin
                 setState(PrinterState::SEARCH_SECOND_ZERO);
                 printf("X zeroed\r\n");
             }
@@ -236,7 +236,7 @@ void DecartPrinter::printRoutine()
 
                 printf("Y zeroed\r\n");
 
-                setMove(xMoveDiapason/2/printScaleCoef, yMoveDiapason/2/printScaleCoef - 5, 5);
+                setMove(xMoveDiapason/2/printScaleCoef, -yMoveDiapason/2/printScaleCoef + 5, 5);
 
                 setState(PrinterState::CORRECTING_CENTER);
                 break;
@@ -244,7 +244,7 @@ void DecartPrinter::printRoutine()
             else if(secondMotorTicksCounter == 0)
             {
                 ESP_LOGE(TAG, "Y edge not found! Pad is out of bounds.\r\n");
-                setMove(0, yMoveDiapason/10, 10);
+                setMove(0, -yMoveDiapason/10, 10);
                 setState(PrinterState::RESCAN_SECOND_ZERO);
             }
             break;
@@ -288,8 +288,8 @@ void DecartPrinter::printRoutine()
 
 void DecartPrinter::setMove(double_t dX, double_t dY, double_t moveTimeInSec)
 {
-    int32_t motor1Ticks_sign = lengthToMotorTicks(dX) + lengthToMotorTicks(-dY);
-    int32_t motor2Ticks_sign = lengthToMotorTicks(dX) - lengthToMotorTicks(-dY);
+    int32_t motor1Ticks_sign = lengthToMotorTicks(dX) - lengthToMotorTicks(-dY);
+    int32_t motor2Ticks_sign = lengthToMotorTicks(dX) + lengthToMotorTicks(-dY);
 
     if(motor1Ticks_sign > 0) printerPins->setFirstMotorDirState(Pins::PinState::RESET);
     else printerPins->setFirstMotorDirState(Pins::PinState::SET);

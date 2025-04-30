@@ -280,7 +280,7 @@ void hardware_task(void *arg)
     if(xStatus == pdPASS)
     {
         ESP_LOGI(TAG, "Machine minutes: %d", statData.machineMinutes);  //LOGV
-        // Settings::saveSetting(Settings::Digit::MACHINE_MINUTES, statData.machineMinutes);
+        Settings::saveSetting(Settings::Digit::MACHINE_MINUTES, statData.machineMinutes);
     }
 
     //===========================Net request===========================================

@@ -55,7 +55,7 @@ void PolarPrinter::findCenter()
     setState(PrinterState::SEARCH_FIRST_ZERO);
 
 #ifdef GLOBAL_IGNORE_ENDSTOPS
-    fiCenterTrigger = true;
+    firstCoordEndstopTrigger = true;
 #else
     if(gpio_get_level(PIN_FISRT_ENDSTOP) == Pins::PinState::SET)
     {
@@ -69,7 +69,7 @@ void PolarPrinter::findCenter()
 #endif  
 
 #ifdef GLOBAL_IGNORE_ENDSTOPS
-    rCenterTrigger = true;
+    secondCoordEndstopTrigger = true;
 #else
     if(gpio_get_level(PIN_SECOND_ENDSTOP) == Pins::PinState::RESET)
     { 
