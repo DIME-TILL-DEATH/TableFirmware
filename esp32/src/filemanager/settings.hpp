@@ -32,8 +32,12 @@ public:
         CORRETION_LENGTH,
         PAUSE_INTERVAL,
         FI_GEAR2_TEETH_COUNT,
-        MACHINE_MINUTES
+        MACHINE_MINUTES,
+        FIRST_MOTOR_INVERSION,
+        SECOND_MOTOR_INVERSION
     };
+
+    static void checkSettingsFile();
 
     static float_t getSetting(Settings::Digit setting);
     static std::string getSetting(Settings::String setting);

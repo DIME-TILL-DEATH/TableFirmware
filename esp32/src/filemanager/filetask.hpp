@@ -1,11 +1,14 @@
 #ifndef FILETASK_H
 #define FILETASK_H
 
-#include "hardware/printer.hpp"
+#include "hardware/abstractprinter.hpp"
+#include "hardware/polarprinter.hpp"
 
 void file_task(void *arg);
 
 extern FileManager fileManager;
-extern Printer printer;
+
+extern AbstractPrinter* printer;
+
 
 #endif

@@ -88,11 +88,11 @@ AbstractMessage* playlistActions(AbstractMessage* msg)
             IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
             int32_t newFilePosition = intMsg->value();
 
-            printer.abortPoint();
+            printer->abortPoint();
 
             ESP_LOGI("FILE TASK", "Request to change printng file, pos: %d", newFilePosition);
             xQueueReset(gcodesQueue);
-            printer.stop();
+            printer->stop();
             fileManager.loadPrintFromPlaylist(newFilePosition);
 
             return new IntValueMessage(FrameType::PLAYLIST_ACTIONS, msg->action(), fileManager.getCurrentPosition());
@@ -113,7 +113,7 @@ AbstractMessage* playlistActions(AbstractMessage* msg)
             ESP_LOGI("FILE TASK", "Request to set new gallery: %s", galleryName.c_str());
             fileManager.loadGallery(galleryName, 0);
             xQueueReset(gcodesQueue);
-            printer.stop();
+            printer->stop();
             fileManager.loadNextPrint();
 
             return new StringMessage(FrameType::PLAYLIST_ACTIONS, (uint8_t)Requests::Playlist::GET_CURRENT_GALLERY, fileManager.currentGalleryName());
@@ -246,7 +246,7 @@ AbstractMessage* firmwareActions(AbstractMessage* msg)
 
         case Requests::Firmware::FIRMWARE_UPDATE:
         {
-            printer.pauseThread();
+            printer->pauseThread();
             uint32_t resultUpdate = FW_DoFirmwareUpdate();
             ESP_LOGI("UPDATE", "Send frame FIRMWARE_UPDATE");
             return new IntValueMessage(FrameType::FIRMWARE_ACTIONS, (uint8_t)Requests::Firmware::FIRMWARE_UPDATE, resultUpdate);
@@ -311,6 +311,8 @@ void processFileMessage(AbstractMessage* msg)
 void file_task(void *arg)
 {
   FM_RESULT result;
+
+  Settings::checkSettingsFile();
 
   uint32_t playlstPosition = Settings::getSetting(Settings::Digit::LAST_PLAYLIST_POSITION);
   std::string galleryName = Settings::getSetting(Settings::String::PRINT_GALLERY);

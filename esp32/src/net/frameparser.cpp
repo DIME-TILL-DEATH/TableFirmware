@@ -93,9 +93,9 @@ AbstractMessage* FrameParser::parseHardwareActions()
 {
     switch((Requests::Hardware)lastRecvFrameHeader.action)
     {
-        case Requests::Hardware::PAUSE_PRINTING: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Hardware::PAUSE_PRINTING: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::GET_SERIAL_ID: return new StringMessage(lastRecvFrame);
-        case Requests::Hardware::REQUEST_PROGRESS: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Hardware::REQUEST_PROGRESS: return new IntValueMessage(lastRecvFrame);
         case Requests::Hardware::SET_PRINT_SPEED:
         case Requests::Hardware::GET_PRINT_SPEED: return new FloatValueMessage(lastRecvFrame);
         case Requests::Hardware::SET_LED_BRIGHTNESS:
@@ -106,12 +106,12 @@ AbstractMessage* FrameParser::parseHardwareActions()
         case Requests::Hardware::GET_ROTATION: return new FloatValueMessage(lastRecvFrame);
         case Requests::Hardware::SET_CORRECTION: 
         case Requests::Hardware::GET_CORRECTION: return new FloatValueMessage(lastRecvFrame);
-        case Requests::Hardware::SET_PAUSE_INTERVAL: 
-        case Requests::Hardware::GET_PAUSE_INTERVAL: return new IntValueMessage(lastRecvFrame);
-        case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
-        case Requests::Hardware::SET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
-        case Requests::Hardware::GET_MACHINE_MINUTES: return new IntValueMessage(lastRecvFrame);
-            //default: break;
+        // case Requests::Hardware::SET_PAUSE_INTERVAL: 
+        // case Requests::Hardware::GET_PAUSE_INTERVAL: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Hardware::SET_FI_GEAR2_TEETH_COUNT: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Hardware::GET_MACHINE_MINUTES: return new IntValueMessage(lastRecvFrame);
+        default: return new IntValueMessage(lastRecvFrame);
     }
     return nullptr;
 }
@@ -120,13 +120,14 @@ AbstractMessage* FrameParser::parsePlaylistActions()
 {
     switch((Requests::Playlist)lastRecvFrameHeader.action)
     {
-        case Requests::Playlist::REQUEST_PLAYLIST: return new IntValueMessage(lastRecvFrame);
-        case Requests::Playlist::REQUEST_PLAYLIST_POSITION: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Playlist::REQUEST_PLAYLIST: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Playlist::REQUEST_PLAYLIST_POSITION: return new IntValueMessage(lastRecvFrame);
         case Requests::Playlist::CHANGE_PLAYLIST: return new StringMessage(lastRecvFrame);
-        case Requests::Playlist::CHANGE_PLAYLIST_POSITION: return new IntValueMessage(lastRecvFrame);
-        case Requests::Playlist::CHANGE_PRINTNG_FILE: return new IntValueMessage(lastRecvFrame);
-        case Requests::Playlist::GET_CURRENT_GALLERY: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Playlist::CHANGE_PLAYLIST_POSITION: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Playlist::CHANGE_PRINTNG_FILE: return new IntValueMessage(lastRecvFrame);
+        // case Requests::Playlist::GET_CURRENT_GALLERY: return new IntValueMessage(lastRecvFrame);
         case Requests::Playlist::SET_CURRENT_GALLERY: return new StringMessage(lastRecvFrame);
+        default: return new IntValueMessage(lastRecvFrame);
     }
 
     return nullptr;
@@ -146,11 +147,12 @@ AbstractMessage* FrameParser::parseFileActions()
             return new FilePartMessage(lastRecvFrame);
         }
         
-        case Requests::File::GET_FILE: return new StringMessage(lastRecvFrame);
-        case Requests::File::GET_FOLDER_CONTENT: return new StringMessage(lastRecvFrame);
-        case Requests::File::GET_FILE_INFO: return new StringMessage(lastRecvFrame);
-        case Requests::File::FOLDER_CREATE: return new StringMessage(lastRecvFrame);
-        case Requests::File::FOLDER_DELETE: return new StringMessage(lastRecvFrame);
+        // case Requests::File::GET_FILE: return new StringMessage(lastRecvFrame);
+        // case Requests::File::GET_FOLDER_CONTENT: return new StringMessage(lastRecvFrame);
+        // case Requests::File::GET_FILE_INFO: return new StringMessage(lastRecvFrame);
+        // case Requests::File::FOLDER_CREATE: return new StringMessage(lastRecvFrame);
+        // case Requests::File::FOLDER_DELETE: return new StringMessage(lastRecvFrame);
+        default: return new StringMessage(lastRecvFrame);
     }
 
     return nullptr;

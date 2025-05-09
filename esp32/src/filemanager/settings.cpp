@@ -6,6 +6,23 @@
 #include "settings.hpp"
 #include "filemanager.hpp"
 
+void Settings::checkSettingsFile()
+{
+    std::string originalFilePath = FileManager::mountPoint + "settings.ini";
+    std::string backupFilePath = FileManager::mountPoint + "settings.bak";
+
+    FILE* settingsfile = fopen(originalFilePath.c_str(), "r");
+    if(settingsfile == NULL)
+    {
+        ESP_LOGE(TAG, "Settings file doesn't exist. Try to recover");
+        rename(backupFilePath.c_str(), originalFilePath.c_str());
+    }
+    else
+    {
+        fclose(settingsfile);
+    }
+}
+
 float_t Settings::getSetting(Settings::Digit setting)
 {
     float_t settingValue=defaultSetting(setting);;
@@ -91,6 +108,8 @@ std::string Settings::getSetting(Settings::String setting)
 void Settings::saveSetting(Settings::Digit setting, float_t value)
 {
     std::string originalFilePath = FileManager::mountPoint + "settings.ini";
+    std::string backupFilePath = FileManager::mountPoint + "settings.bak";
+
     FILE* originalfile = fopen(originalFilePath.c_str(), "r");
     if(originalfile == NULL)
     {
@@ -140,13 +159,18 @@ void Settings::saveSetting(Settings::Digit setting, float_t value)
     fclose(originalfile);
     fclose(tempFile);
 
+    remove(backupFilePath.c_str());
+    rename(originalFilePath.c_str(), backupFilePath.c_str());
     remove(originalFilePath.c_str());
     rename(tmpFilePath.c_str(), originalFilePath.c_str());
+    remove(tmpFilePath.c_str());
 }
 
 void Settings::saveSetting(Settings::String setting, std::string value)
 {
     std::string originalFilePath = FileManager::mountPoint + "settings.ini";
+    std::string backupFilePath = FileManager::mountPoint + "settings.bak";
+
     FILE* originalfile = NULL;
     do{ 
         originalfile = fopen(originalFilePath.c_str(), "r");
@@ -204,8 +228,11 @@ void Settings::saveSetting(Settings::String setting, std::string value)
     fclose(originalfile);
     fclose(tempFile);
 
+    remove(backupFilePath.c_str());
+    rename(originalFilePath.c_str(), backupFilePath.c_str());
     remove(originalFilePath.c_str());
     rename(tmpFilePath.c_str(), originalFilePath.c_str());
+    remove(tmpFilePath.c_str());
 }
 
 std::string Settings::settingName(Settings::Digit settingType)
@@ -221,6 +248,8 @@ std::string Settings::settingName(Settings::Digit settingType)
         case Settings::Digit::PAUSE_INTERVAL: return "PAUSE_INTERVAL";
         case Settings::Digit::FI_GEAR2_TEETH_COUNT: return "FI_GEAR2_TEETH_COUNT";
         case Settings::Digit::MACHINE_MINUTES: return "MACHINE_MINUTES";
+        case Settings::Digit::FIRST_MOTOR_INVERSION: return "FIRST_MOTOR_INVERSION";
+        case Settings::Digit::SECOND_MOTOR_INVERSION: return "SECOND_MOTOR_INVERSION";
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return "";
@@ -239,6 +268,8 @@ float_t Settings::defaultSetting(Settings::Digit settingType)
         case Settings::Digit::PAUSE_INTERVAL: return 1000;
         case Settings::Digit::FI_GEAR2_TEETH_COUNT: return 160;
         case Settings::Digit::MACHINE_MINUTES: return 0;
+        case Settings::Digit::FIRST_MOTOR_INVERSION: return 0;
+        case Settings::Digit::SECOND_MOTOR_INVERSION: return 0;
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return 0;

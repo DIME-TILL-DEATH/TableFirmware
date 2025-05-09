@@ -5,8 +5,9 @@
 
 #include "requestactions.h"
 #include "projdefines.h"
-#include "printer.hpp"
 #include "printsequence.hpp"
+
+#include "abstractprinter.hpp"
 
 #include "filemanager/filemanager.hpp"
 #include "filemanager/settings.hpp"
@@ -22,11 +23,13 @@
 #include "leds/abstractledstrip.hpp"
 #include "leds/pwmledstrip.hpp"
 
+#include "polarprinter.hpp"
+#include "decartprinter.hpp"
+
 
 static const char *TAG = "HW TASK";
 
-Printer printer;
-
+AbstractPrinter* printer;
 AbstractLedStrip* ledStrip;
 
 StatisticData_t statData;
@@ -64,13 +67,13 @@ void processMessage(AbstractMessage* msg)
         case Requests::Hardware::PAUSE_PRINTING:
         {
             ESP_LOGI(TAG, "Request pause print");
-            printer.pauseResume();
+            printer->pauseResume();
             break;
         }
 
         case Requests::Hardware::REQUEST_PROGRESS:
         {
-            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.currentPrintPointNum(), fileManager.pointsNum());
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->currentPrintPointNum(), fileManager.pointsNum());
             break;
         }
 
@@ -78,7 +81,7 @@ void processMessage(AbstractMessage* msg)
         {
             FloatValueMessage* floatMsg = static_cast<FloatValueMessage*>(msg);
             float_t newPrintSpeed = floatMsg->value();
-            printer.setSpeed(newPrintSpeed);
+            printer->setSpeed(newPrintSpeed);
 
             ESP_LOGI(TAG, "Settled speed: %f", newPrintSpeed);
             Settings::saveSetting(Settings::Digit::PRINT_SPEED, newPrintSpeed);
@@ -88,7 +91,7 @@ void processMessage(AbstractMessage* msg)
 
         case Requests::Hardware::GET_PRINT_SPEED:
         {
-            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getSpeed());
+            answerMessage = new FloatValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->getSpeed());
             break;
         }
 
@@ -173,33 +176,15 @@ void processMessage(AbstractMessage* msg)
             uint32_t newPauseInterval = intMsg->value();
 
             ESP_LOGI(TAG, "Settled pause interval: %d", newPauseInterval);
-            printer.setPauseInterval(newPauseInterval);
+            printer->setPauseInterval(newPauseInterval);
             Settings::saveSetting(Settings::Digit::PAUSE_INTERVAL, newPauseInterval);      
-            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getPauseInterval()); 
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->getPauseInterval()); 
             break;
         }
 
         case Requests::Hardware::GET_PAUSE_INTERVAL:
         {
-            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getPauseInterval());
-            break;
-        }
-
-        case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT:
-        {
-            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getFiGear2TeethsCount());
-            break;
-        }
-
-        case Requests::Hardware::SET_FI_GEAR2_TEETH_COUNT:
-        {
-            IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
-            uint32_t newGear2TeethCount = intMsg->value();
-
-            ESP_LOGI(TAG, "Settled teeth count: %d", newGear2TeethCount);
-            printer.setFiGearTeethCount(20, newGear2TeethCount);
-            Settings::saveSetting(Settings::Digit::FI_GEAR2_TEETH_COUNT, newGear2TeethCount);      
-            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer.getFiGear2TeethsCount());     
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->getPauseInterval());
             break;
         }
 
@@ -209,6 +194,64 @@ void processMessage(AbstractMessage* msg)
             break;
         }
 
+        case Requests::Hardware::SET_FIRST_MOTOR_INVERSION:
+        {
+            IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
+            uint32_t newMotorInversion = intMsg->value();
+
+            ESP_LOGI(TAG, "Settled first motor inversion: %d", newMotorInversion);
+            printer->setPauseInterval(newMotorInversion);
+            Settings::saveSetting(Settings::Digit::FIRST_MOTOR_INVERSION, newMotorInversion);      
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseFirstMotor); 
+            break;
+        }
+
+        case Requests::Hardware::GET_FIRST_MOTOR_INVERSION:
+        {
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseFirstMotor);
+            break;
+        }
+
+        case Requests::Hardware::SET_SECOND_MOTOR_INVERSION:
+        {
+            IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
+            uint32_t newMotorInversion = intMsg->value();
+
+            ESP_LOGI(TAG, "Settled second motor inversion: %d", newMotorInversion);
+            printer->setPauseInterval(newMotorInversion);
+            Settings::saveSetting(Settings::Digit::SECOND_MOTOR_INVERSION, newMotorInversion);      
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseSecondMotor); 
+            break;
+        }
+
+        case Requests::Hardware::GET_SECOND_MOTOR_INVERSION:
+        {
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseSecondMotor);
+            break;
+        }
+
+#if defined(PRINTER_POLAR)
+        case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT:
+        {
+            PolarPrinter* polarPrinter = static_cast<PolarPrinter*>(printer);
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), polarPrinter->getFiGear2TeethsCount());
+            break;
+        }
+
+        case Requests::Hardware::SET_FI_GEAR2_TEETH_COUNT:
+        {
+            IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
+            uint32_t newGear2TeethCount = intMsg->value();
+
+            PolarPrinter* polarPrinter = static_cast<PolarPrinter*>(printer);
+
+            ESP_LOGI(TAG, "Settled teeth count: %d", newGear2TeethCount);
+            polarPrinter->setFiGearTeethCount(20, newGear2TeethCount);
+            Settings::saveSetting(Settings::Digit::FI_GEAR2_TEETH_COUNT, newGear2TeethCount);      
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), polarPrinter->getFiGear2TeethsCount());     
+            break;
+        }
+#endif
         default: ESP_LOGE(TAG, "Unknown hardware action"); break;
     }
 
@@ -244,22 +287,22 @@ void hardware_task(void *arg)
     ledStrip = new PwmLedStrip();  
   }
 
-  printer.findCenter();
+  printer->findCenter();
   
   for(;;)
   { 
     portBASE_TYPE xStatus;
     //==========================Main routine============================================
-    printer.printRoutine();
-    while(printer.isPrinterFree())
+    printer->printRoutine();
+    while(printer->isPrinterFree())
     {
       GCode::GAbstractComm* recvComm;
       xStatus = xQueueReceive(gcodesQueue, &recvComm, pdMS_TO_TICKS(0));
       if(xStatus == pdPASS)
       {
-         printer.setNextCommand(recvComm);
+         printer->setNextCommand(recvComm);
          firstCommRecv = true;
-         printer.printRoutine();
+         printer->printRoutine();
       }
       else
       {
@@ -272,7 +315,7 @@ void hardware_task(void *arg)
     xStatus = xQueueReceive(statisticQueue, &statData, pdMS_TO_TICKS(0));
     if(xStatus == pdPASS)
     {
-        ESP_LOGV(TAG, "Machine minutes: %d", statData.machineMinutes);  
+        ESP_LOGI(TAG, "Machine minutes: %d", statData.machineMinutes);  //LOGV
         Settings::saveSetting(Settings::Digit::MACHINE_MINUTES, statData.machineMinutes);
     }
 

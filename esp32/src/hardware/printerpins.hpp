@@ -20,25 +20,22 @@ class PrinterPins
     public:
         PrinterPins(gpio_isr_t endStops_cb);
 
-        void rStepState(PinState newState);
-        void fiStepState(PinState newState);
-        void rDirState(PinState newState);
-        void fiDirState(PinState newState);
-
-        PinState getRStep();
-        PinState getRDir();
-        PinState getFiStep();
-        PinState getFiDir();
+        void setFirstMotorStepState(PinState newState);
+        void setSecondMotorStepState(PinState newState);
+        PinState getFirstMotorStep();
+        PinState getFirstMotorDir();
+        
+        void setFirstMotorDirState(PinState newState);
+        void setSecondMotorDirState(PinState newState);
+        PinState getSecondMotorStep();
+        PinState getSecondMotorDir();
+        
     private:
-        // gpio_num_t pinRStep{PIN_RSTEP};
-        // gpio_num_t pinRDir{PIN_RDIR};
-        // gpio_num_t pinFiStep{PIN_FISTEP};
-        // gpio_num_t pinFiDir{PIN_FIDIR};
+        PinState firstMotorStep{PinState::RESET};
+        PinState firstMotorDir{PinState::RESET};
 
-        PinState rStep{PinState::RESET};
-        PinState fiStep{PinState::RESET};
-        PinState rDir{PinState::RESET};
-        PinState fiDir{PinState::RESET};
+        PinState secondMotorStep{PinState::RESET}; 
+        PinState secondMotorDir{PinState::RESET};  
 
         spi_device_handle_t spiToSR;
 

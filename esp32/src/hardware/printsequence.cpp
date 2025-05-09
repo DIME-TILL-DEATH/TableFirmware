@@ -14,31 +14,31 @@ static void IRAM_ATTR gpio_isr_handler(void* arg)
 {
     uint32_t gpio_num = (uint32_t) arg;
     
-    if(gpio_num == PIN_ENDSTOP_R)
+    if(gpio_num == PIN_SECOND_ENDSTOP)
     {
-      printer.trigRZero();
+      printer->trigRZero();
       //esp_rom_printf("Trigger R center\r\n");
     }
-    if(gpio_num == PIN_ENDSTOP_FI)
+    if(gpio_num == PIN_FISRT_ENDSTOP)
     {
-      printer.trigFiZero();
+      printer->trigFiZero();
       //esp_rom_printf("Trigger Fi center\r\n");
     }
 }
 
-static bool IRAM_ATTR rTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
+static bool IRAM_ATTR firstTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
 {
   UBaseType_t isrStatus = taskENTER_CRITICAL_FROM_ISR();
-  printer.makeRStep();
+  printer->firtsMotorMakeStep();
   taskEXIT_CRITICAL_FROM_ISR(isrStatus);
   portYIELD_FROM_ISR();
   return pdFALSE;
 }
 
-static bool IRAM_ATTR fiTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
+static bool IRAM_ATTR secondTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_data)
 {
   UBaseType_t isrStatus = taskENTER_CRITICAL_FROM_ISR();
-  printer.makeFiStep();
+  printer->secondMotorMakeStep();
   taskEXIT_CRITICAL_FROM_ISR(isrStatus);
   portYIELD_FROM_ISR();
   return pdFALSE;
@@ -46,7 +46,13 @@ static bool IRAM_ATTR fiTimer_on_alarm_cb(gptimer_handle_t timer, const gptimer_
 
 void Printer_Init()
 {
-  printer.initPins(gpio_isr_handler);
-  printer.initTimers(rTimer_on_alarm_cb, fiTimer_on_alarm_cb);
-  printer.loadSettings();
+#ifdef PRINTER_POLAR
+  printer = new PolarPrinter;
+#else
+  printer = new DecartPrinter;
+#endif
+
+  printer->initPins(gpio_isr_handler);
+  printer->initTimers(firstTimer_on_alarm_cb, secondTimer_on_alarm_cb);
+  printer->loadSettings();
 }

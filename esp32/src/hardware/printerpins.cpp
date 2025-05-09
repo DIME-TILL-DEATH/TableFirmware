@@ -6,21 +6,7 @@ using namespace Pins;
 
 PrinterPins::PrinterPins(gpio_isr_t endStops_cb)
 {
-    // uint64_t outputPinsSelection = ((1ULL << pinRStep) | (1ULL<<pinRDir) | (1ULL<<pinFiStep) | (1ULL<<pinFiDir));
-
     gpio_config_t io_conf = {};
-    // io_conf.intr_type = GPIO_INTR_DISABLE;
-    // io_conf.mode = GPIO_MODE_OUTPUT; 
-    // io_conf.pin_bit_mask = outputPinsSelection;
-    // io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;  
-    // io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-   
-    // gpio_config(&io_conf);   
-
-    // gpio_set_level(pinRStep, 0);
-    // gpio_set_level(pinRDir, 0);
-    // gpio_set_level(pinFiStep, 0);
-    // gpio_set_level(pinFiDir, 0);
 
     esp_err_t ret;
     
@@ -47,7 +33,7 @@ PrinterPins::PrinterPins(gpio_isr_t endStops_cb)
 
     //endstops======================
     io_conf = {};
-    uint64_t inputPinsSelection = ((1ULL << PIN_ENDSTOP_R) | (1ULL<<PIN_ENDSTOP_FI));
+    uint64_t inputPinsSelection = ((1ULL << PIN_SECOND_ENDSTOP) | (1ULL<<PIN_FISRT_ENDSTOP));
     io_conf.intr_type = GPIO_INTR_NEGEDGE;
     io_conf.pin_bit_mask = inputPinsSelection;
     io_conf.mode = GPIO_MODE_INPUT;
@@ -56,66 +42,66 @@ PrinterPins::PrinterPins(gpio_isr_t endStops_cb)
     gpio_config(&io_conf);
 
     //change gpio interrupt type for one pin
-    gpio_set_intr_type(PIN_ENDSTOP_FI, GPIO_INTR_POSEDGE);
+    gpio_set_intr_type(PIN_FISRT_ENDSTOP, GPIO_INTR_POSEDGE);
 
     //install gpio isr service
     uint8_t ESP_INTR_FLAG_DEFAULT=0;
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
 
     //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(PIN_ENDSTOP_R, endStops_cb, (void*) PIN_ENDSTOP_R);
-    gpio_isr_handler_add(PIN_ENDSTOP_FI, endStops_cb, (void*) PIN_ENDSTOP_FI);
+    gpio_isr_handler_add(PIN_SECOND_ENDSTOP, endStops_cb, (void*) PIN_SECOND_ENDSTOP);
+    gpio_isr_handler_add(PIN_FISRT_ENDSTOP, endStops_cb, (void*) PIN_FISRT_ENDSTOP);
 
-    gpio_intr_disable(PIN_ENDSTOP_R);
-    gpio_intr_disable(PIN_ENDSTOP_FI);
+    gpio_intr_disable(PIN_SECOND_ENDSTOP);
+    gpio_intr_disable(PIN_FISRT_ENDSTOP);
 }
 
-void PrinterPins::rStepState(PinState newState)
+void PrinterPins::setSecondMotorStepState(PinState newState)
 {
-    rStep = newState;
+    secondMotorStep = newState;
     // gpio_set_level(pinRStep, rStep);
     srWrite();
 }
 
-void PrinterPins::fiStepState(PinState newState)
+void PrinterPins::setFirstMotorStepState(PinState newState)
 {
-    fiStep = newState;
+    firstMotorStep = newState;
     // gpio_set_level(pinFiStep, fiStep);
     srWrite();
 }
 
-void PrinterPins::rDirState(PinState newState)
+void PrinterPins::setSecondMotorDirState(PinState newState)
 {
-    rDir = newState;
+    secondMotorDir = newState;
     // gpio_set_level(pinRDir, rDir);
     srWrite();
 }
 
-void PrinterPins::fiDirState(PinState newState)
+void PrinterPins::setFirstMotorDirState(PinState newState)
 {
-    fiDir = newState;
+    firstMotorDir = newState;
     // gpio_set_level(pinFiDir, fiDir);
     srWrite();
 }
 
-PinState PrinterPins::getRStep()
+PinState PrinterPins::getSecondMotorStep()
 {
-    return rStep;
+    return secondMotorStep;
 }
 
-PinState PrinterPins::getFiStep()
+PinState PrinterPins::getFirstMotorStep()
 {
-    return fiStep;
+    return firstMotorStep;
 }
 
-PinState PrinterPins::getRDir()
+PinState PrinterPins::getSecondMotorDir()
 {
-    return rDir;
+    return secondMotorDir;
 }
 
-PinState PrinterPins::getFiDir()
+PinState PrinterPins::getFirstMotorDir()
 {
-    return fiDir;
+    return firstMotorDir;
 }
 
 void PrinterPins::srWrite()
@@ -123,7 +109,7 @@ void PrinterPins::srWrite()
     esp_err_t ret;
     spi_transaction_t t = {};
 
-    srWord = 0 | (rStep<<1) | (rDir<<2) | (fiStep<<3)  | (fiDir<<4);
+    srWord = 0 | (secondMotorStep<<1) | (secondMotorDir<<2) | (firstMotorStep<<3)  | (firstMotorDir<<4);
                
     t.flags=SPI_TRANS_USE_TXDATA;
     t.length=8;                
