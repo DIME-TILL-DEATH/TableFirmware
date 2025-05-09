@@ -248,6 +248,8 @@ std::string Settings::settingName(Settings::Digit settingType)
         case Settings::Digit::PAUSE_INTERVAL: return "PAUSE_INTERVAL";
         case Settings::Digit::FI_GEAR2_TEETH_COUNT: return "FI_GEAR2_TEETH_COUNT";
         case Settings::Digit::MACHINE_MINUTES: return "MACHINE_MINUTES";
+        case Settings::Digit::FIRST_MOTOR_INVERSION: return "FIRST_MOTOR_INVERSION";
+        case Settings::Digit::SECOND_MOTOR_INVERSION: return "SECOND_MOTOR_INVERSION";
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return "";
@@ -266,6 +268,8 @@ float_t Settings::defaultSetting(Settings::Digit settingType)
         case Settings::Digit::PAUSE_INTERVAL: return 1000;
         case Settings::Digit::FI_GEAR2_TEETH_COUNT: return 160;
         case Settings::Digit::MACHINE_MINUTES: return 0;
+        case Settings::Digit::FIRST_MOTOR_INVERSION: return 0;
+        case Settings::Digit::SECOND_MOTOR_INVERSION: return 0;
     }
     ESP_LOGE(TAG, "Unknown setting type!");
     return 0;

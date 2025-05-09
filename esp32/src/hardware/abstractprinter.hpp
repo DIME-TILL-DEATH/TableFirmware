@@ -71,6 +71,9 @@ public:
 
     bool isPrinterFree();
 
+    bool inverseFirstMotor = false;
+    bool inverseSecondMotor = false;
+
 protected:
     constexpr static char TAG[] = "PRINTER";
 
@@ -99,6 +102,7 @@ protected:
 
     bool firstCoordEndstopTrigger = false;
     bool secondCoordEndstopTrigger = false;
+
 
     float_t speed; 
     float_t printScaleCoef;

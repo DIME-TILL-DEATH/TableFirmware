@@ -194,6 +194,42 @@ void processMessage(AbstractMessage* msg)
             break;
         }
 
+        case Requests::Hardware::SET_FIRST_MOTOR_INVERSION:
+        {
+            IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
+            uint32_t newMotorInversion = intMsg->value();
+
+            ESP_LOGI(TAG, "Settled first motor inversion: %d", newMotorInversion);
+            printer->setPauseInterval(newMotorInversion);
+            Settings::saveSetting(Settings::Digit::FIRST_MOTOR_INVERSION, newMotorInversion);      
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseFirstMotor); 
+            break;
+        }
+
+        case Requests::Hardware::GET_FIRST_MOTOR_INVERSION:
+        {
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseFirstMotor);
+            break;
+        }
+
+        case Requests::Hardware::SET_SECOND_MOTOR_INVERSION:
+        {
+            IntValueMessage* intMsg = static_cast<IntValueMessage*>(msg);
+            uint32_t newMotorInversion = intMsg->value();
+
+            ESP_LOGI(TAG, "Settled second motor inversion: %d", newMotorInversion);
+            printer->setPauseInterval(newMotorInversion);
+            Settings::saveSetting(Settings::Digit::SECOND_MOTOR_INVERSION, newMotorInversion);      
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseSecondMotor); 
+            break;
+        }
+
+        case Requests::Hardware::GET_SECOND_MOTOR_INVERSION:
+        {
+            answerMessage = new IntValueMessage(FrameType::HARDWARE_ACTIONS, msg->action(), printer->inverseSecondMotor);
+            break;
+        }
+
 #if defined(PRINTER_POLAR)
         case Requests::Hardware::GET_FI_GEAR2_TEETH_COUNT:
         {

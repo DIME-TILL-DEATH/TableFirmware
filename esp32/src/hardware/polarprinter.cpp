@@ -27,6 +27,9 @@ void PolarPrinter::loadSettings()
     correctionLength = Settings::getSetting(Settings::Digit::CORRETION_LENGTH);
     pauseInterval = Settings::getSetting(Settings::Digit::PAUSE_INTERVAL);
 
+    inverseFirstMotor = Settings::getSetting(Settings::Digit::FIRST_MOTOR_INVERSION);
+    inverseSecondMotor = Settings::getSetting(Settings::Digit::SECOND_MOTOR_INVERSION);
+
     uint16_t settingFiGear2TeethCount = Settings::getSetting(Settings::Digit::FI_GEAR2_TEETH_COUNT);
     setRGearTeethCount(20);
     setFiGearTeethCount(20, settingFiGear2TeethCount);
@@ -373,14 +376,15 @@ void PolarPrinter::printRoutine()
 
 void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
 {
-    bool rDirection;
+    bool rDirection, fiDirection;
 
     secondMotorTicksCounter = lengthToMotorTicks(abs(dR));
     int32_t correctionTicks = lengthToMotorTicks(abs(dFi) * errRonRadian);
 
     if(dFi > 0) // counter clokwise, R decrease
     {
-        printerPins->setFirstMotorDirState(Pins::PinState::RESET);
+        fiDirection = 0;
+        // printerPins->setFirstMotorDirState(Pins::PinState::RESET);
         if(dR >= 0)
         {
             rDirection = 0;
@@ -398,7 +402,8 @@ void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
     }
     else // clockwise, R increase
     {
-        printerPins->setFirstMotorDirState(Pins::PinState::SET);
+        fiDirection = 1;
+        // printerPins->setFirstMotorDirState(Pins::PinState::SET);
         if(dR >= 0)
         {
             int32_t resultTicks = secondMotorTicksCounter - correctionTicks;
@@ -415,6 +420,10 @@ void PolarPrinter::setStep(double_t dR, double_t dFi, double_t stepTimeInSec)
         }
     }
 
+    if(inverseFirstMotor) fiDirection = !fiDirection;
+    if(inverseSecondMotor) rDirection = !rDirection;
+
+    printerPins->setFirstMotorDirState(static_cast<Pins::PinState>(fiDirection));
     printerPins->setSecondMotorDirState(static_cast<Pins::PinState>(rDirection));
 
     firstMotorTicksCounter = radiansToMotorTicks(abs(dFi));
